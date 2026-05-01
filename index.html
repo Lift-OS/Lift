@@ -513,6 +513,7 @@
 <div class="header-pull-indicator" id="headerPullIndicator"></div>
 
 <script>
+    try{var _u=JSON.parse(localStorage.getItem('LIFTOS_users')||'[]');if(_u.some(function(x){return !x.hash&&!x.senha}))localStorage.removeItem('LIFTOS_users')}catch(e){localStorage.removeItem('LIFTOS_users')}
 /* ===== UTILIDADES BASE ===== */
 function esc(s){if(s===null||s===undefined)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function $(id){return document.getElementById(id)}
@@ -766,9 +767,7 @@ getUsers:function(){
   var u=localStorage.getItem('LIFTOS_users');
   if(u){try{return JSON.parse(u)}catch(e){}}
   var d=[
-    {id:1,nome:'Administrador',login:'admin',senha:'admin123',nivel:'admin'},
-    {id:2,nome:'Tecnico Principal',login:'tecnico',senha:'123456',nivel:'tecnico'}
-  ];
+var d=[{id:1,nome:'Administrador',login:'admin',senha:'admin123',nivel:'admin'},{id:2,nome:'Tecnico Principal',login:'tecnico',senha:'123456',nivel:'tecnico'}];
   localStorage.setItem('LIFTOS_users',JSON.stringify(d));
   return d
 },
@@ -786,17 +785,11 @@ login:async function(){
   if(btn){btn.classList.add('btn-loading');btn.disabled=true}
   try{
     var users=this.getUsers();
-    
-    /* GARANTIR que usuários sem hash nem senha recebam hash do default */
-    var defaults={
-      admin:'admin123',
-      tecnico:'123456'
-    };
+    var defaults={admin:'admin123',tecnico:'123456'};
     var changed=false;
     for(var i=0;i<users.length;i++){
-      var u=users[i];
-      if(!u.hash&&!u.senha&&defaults[u.login]){
-        u.senha=defaults[u.login];
+      if(!users[i].hash&&!users[i].senha&&defaults[users[i].login]){
+        users[i].senha=defaults[users[i].login];
         changed=true;
       }
     }
@@ -804,7 +797,14 @@ login:async function(){
     
     users=await Hash.migrateUsers(users);
     var inputHash=await Hash.hash(senha);
-    var user=users.find(function(u){return u.login===login&&u.hash===inputHash});
+    
+    var user=users.find(function(u){
+      if(u.login!==login)return false;
+      if(u.hash===inputHash)return true;
+      if(u.senha===senha)return true;
+      return false;
+    });
+    
     if(!user){
       if(errDiv){errDiv.innerHTML='Credenciais invalidas!';errDiv.style.display='block'}
       $('loginPassword').value='';
