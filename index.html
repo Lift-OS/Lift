@@ -223,8 +223,8 @@
     <div class="space-y-4">
       <div><label class="block text-xs text-[var(--muted)] mb-1">Usuario</label><input type="text" id="loginUsername" class="form-input" placeholder="admin ou tecnico" autocomplete="off" autofocus></div>
       <div><label class="block text-xs text-[var(--muted)] mb-1">Senha</label><input type="password" id="loginPassword" class="form-input" placeholder="admin123 ou 123456"></div>
-      <button onclick="Auth.login()" class="btn btn-primary w-full" id="btnLogin"><i class="fas fa-sign-in-alt"></i> Entrar</button>
-      <a href="javascript:void(0)" onclick="Auth.recoverPassword()" class="btn btn-whatsapp w-full text-sm no-underline"><i class="fab fa-whatsapp text-lg"></i> Esqueci minha senha</a>
+      <button class="btn btn-primary w-full" id="btnLogin"><i class="fas fa-sign-in-alt"></i> Entrar</button>
+      <a href="#" id="btnRecover" class="btn btn-whatsapp w-full text-sm no-underline"><i class="fab fa-whatsapp text-lg"></i> Esqueci minha senha</a>
       <div id="loginErrorMessage" class="login-error"></div>
     </div>
     <div class="mt-6 text-center text-xs text-[var(--muted)]"><p>Site: <strong class="text-[var(--accent)]">www.LiftOS.com.br</strong></p><p class="mt-1">Suporte Tecnico <strong>(98)98824-8877</strong></p></div>
@@ -772,21 +772,22 @@ var d=[{id:1,nome:'Administrador',login:'admin',senha:'admin123',nivel:'admin'},
   return d
 },
   saveUsers:function(u){localStorage.setItem('LIFTOS_users',JSON.stringify(u))},
-login:async function(){
-  var login=$('loginUsername').value.trim(),
-      senha=$('loginPassword').value,
-      errDiv=$('loginErrorMessage'),
-      btn=$('btnLogin');
+login:function(){
+  var login=$('loginUsername').value.trim();
+  var senha=$('loginPassword').value;
+  var errDiv=$('loginErrorMessage');
+  
   if(errDiv){errDiv.style.display='none';errDiv.innerHTML=''}
   if(!login||!senha){
     if(errDiv){errDiv.innerHTML='Preencha usuario e senha';errDiv.style.display='block'}
     return
   }
-  if(btn){btn.classList.add('btn-loading');btn.disabled=true}
+  
   try{
     var users=this.getUsers();
     var defaults={admin:'admin123',tecnico:'123456'};
     var changed=false;
+    
     for(var i=0;i<users.length;i++){
       if(!users[i].hash&&!users[i].senha&&defaults[users[i].login]){
         users[i].senha=defaults[users[i].login];
@@ -794,22 +795,20 @@ login:async function(){
       }
     }
     if(changed)this.saveUsers(users);
-    
-    users=await Hash.migrateUsers(users);
-    var inputHash=await Hash.hash(senha);
-    
+
     var user=users.find(function(u){
       if(u.login!==login)return false;
-      if(u.hash===inputHash)return true;
       if(u.senha===senha)return true;
+      if(u.hash&&u.hash===Hash._simpleHash(senha))return true;
       return false;
     });
-    
+
     if(!user){
       if(errDiv){errDiv.innerHTML='Credenciais invalidas!';errDiv.style.display='block'}
       $('loginPassword').value='';
       return
     }
+
     this.currentUser=user;
     localStorage.setItem('LIFTOS_current_user',JSON.stringify(user));
     $('loginScreen').style.display='none';
@@ -819,13 +818,23 @@ login:async function(){
     showToast('Bem-vindo, '+user.nome+'!');
     this.startInactivityTimer();
     App.init()
-  }finally{
-    if(btn){btn.classList.remove('btn-loading');btn.disabled=false}
+  }catch(e){
+    alert('Erro no login: '+e.message);
   }
 },
   logout:function(r){if(this.currentUser&&r==='inactivity')showToast('Sessao expirada',true);if(this.inactivityTimer)clearTimeout(this.inactivityTimer);Heartbeat.stop();Timer.cleanup();this.currentUser=null;localStorage.removeItem('LIFTOS_current_user');$('loginScreen').style.display='flex';$('appContainer').style.display='none';SyncUI.set('Offline','offline');State._initDone=false},
   startInactivityTimer:function(){var self=this;['mousedown','mousemove','keypress','scroll','touchstart'].forEach(function(e){document.addEventListener(e,function(){self.resetInactivityTimer()})});this.resetInactivityTimer()},
-  recoverPassword:function(){var login=$('loginUsername').value.trim();if(!login){login=prompt('Digite seu usuario:');if(!login||!login.trim())return;login=login.trim()}var u=this.getUsers().find(function(x){return x.login===login});if(!u){alert('Usuario nao encontrado.');return}window.open('https://wa.me/'+Config.whatsAdmin+'?text='+encodeURIComponent('Ola! *Esqueci minha senha*\n\nUsuario: *'+login+'*\n\nSistema de O.S.'),'_blank')},
+recoverPassword:function(){
+  var login=$('loginUsername').value.trim();
+  if(!login){
+    login=prompt('Digite seu usuario:');
+    if(!login||!login.trim())return;
+    login=login.trim()
+  }
+  var u=this.getUsers().find(function(x){return x.login===login});
+  if(!u){alert('Usuario nao encontrado.');return}
+  location.href='https://wa.me/'+Config.whatsAdmin+'?text='+encodeURIComponent('Ola! *Esqueci minha senha*\n\nUsuario: *'+login+'*\n\nSistema de O.S.')
+},
   checkSession:function(){var s=localStorage.getItem('LIFTOS_current_user');if(s){try{this.currentUser=JSON.parse(s);$('loginScreen').style.display='none';$('appContainer').style.display='block';$('currentUserName').innerHTML=esc(this.currentUser.nome);this.updatePermissions();this.startInactivityTimer();return true}catch(e){localStorage.removeItem('LIFTOS_current_user')}}return false},
   updatePermissions:function(){
     if(!this.currentUser)return;var a=this.isAdmin(),badge=$('currentUserNivel');
@@ -1366,7 +1375,13 @@ function adicionarCampoEquipamento(marca,modelo,serie,qtd,combustivel){
   var lp=$('loginPassword');
   if(lp)lp.addEventListener('keydown',function(e){if(e.key==='Enter')Auth.login()});
   var lu=$('loginUsername');
-  if(lu)lu.addEventListener('keydown',function(e){if(e.key==='Enter')Auth.login()})
+  if(lu)lu.addEventListener('keydown',function(e){if(e.key==='Enter')Auth.login()});
+  
+  var btnL=$('btnLogin');
+  if(btnL)btnL.addEventListener('click',function(e){e.preventDefault();Auth.login()});
+  
+  var btnR=$('btnRecover');
+  if(btnR)btnR.addEventListener('click',function(e){e.preventDefault();Auth.recoverPassword()})
 })();
 
 document.addEventListener('DOMContentLoaded',function(){
