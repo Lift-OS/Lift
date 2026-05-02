@@ -307,8 +307,8 @@
         <div class="flex justify-between items-center flex-wrap gap-3 mb-4">
           <h2 class="font-display text-xl" id="orcFormTitle"><i class="fas fa-file-invoice-dollar"></i> Novo Orcamento</h2>
           <div class="flex gap-2">
-            <button onclick="Orcamento.novo()" class="btn btn-secondary text-sm" id="btnOrcNovo"><i class="fas fa-pen-alt"></i> 📝 Novo</button>
-            <button onclick="Orcamento.limparFormulario()" class="btn btn-secondary text-sm"><i class="fas fa-trash-alt"></i> 🗑️ Limpar</button>
+            <button onclick="Orcamento.novo()" class="btn btn-secondary text-sm" id="btnOrcNovo"><i class="fas fa-pen-alt"></i>Novo</button>
+            <button onclick="Orcamento.limparFormulario()" class="btn btn-secondary text-sm"><i class="fas fa-trash-alt"></i>Limpar</button>
           </div>
         </div>
         <input type="hidden" id="orc_editId" value="">
@@ -478,9 +478,9 @@
         <div class="mt-3"><label class="block text-xs text-[var(--muted)] mb-1">Pecas / Materiais Aplicados</label><textarea id="pecasAplicadas" class="form-input min-h-20" placeholder="Liste as pecas..."></textarea></div>
         <div class="mt-3"><label class="block text-xs text-[var(--muted)] mb-1">Pendencias / Itens Criticos</label><textarea id="pendencias" class="form-input min-h-20" placeholder="Pendencias..."></textarea></div>
       </div>
-      <div class="checklist-card p-4 md:p-5 mb-5"><h2 class="font-display text-xl mb-2"><i class="fas fa-camera"></i> Foto do Horimetro</h2><div class="photo-input-group"><input type="file" id="fotoHorimetroInput" accept="image/*" class="form-input flex-1"><button type="button" onclick="Fotos.capturarCamera('horimetro')" class="camera-btn"><i class="fas fa-camera"></i> 📷 Camera</button></div><div id="fotoHorimetroPreview" class="photo-preview"></div></div>
-      <div class="checklist-card p-4 md:p-5 mb-5"><h2 class="font-display text-xl mb-2">Fotos do Servico (max. 10)</h2><div class="photo-input-group"><input type="file" id="fotosServico" multiple accept="image/*" class="form-input flex-1"><button type="button" onclick="Fotos.capturarCamera('servico')" class="camera-btn"><i class="fas fa-camera"></i> 📷 Camera</button></div><div id="fotosPreview" class="photo-preview"></div></div>
-      <div class="checklist-card p-4 md:p-5 mb-5"><h2 class="font-display text-xl mb-2"><i class="fas fa-exclamation-triangle"></i> Fotos das Pendencias (max. 10)</h2><div class="photo-input-group"><input type="file" id="fotosPendenciasInput" multiple accept="image/*" class="form-input flex-1"><button type="button" onclick="Fotos.capturarCamera('pendencia')" class="camera-btn"><i class="fas fa-camera"></i> 📷 Camera</button></div><div id="fotosPendenciasPreview" class="photo-preview"></div></div>
+      <div class="checklist-card p-4 md:p-5 mb-5"><h2 class="font-display text-xl mb-2"><i class="fas fa-camera"></i> Foto do Horimetro</h2><div class="photo-input-group"><input type="file" id="fotoHorimetroInput" accept="image/*" class="form-input flex-1"><button type="button" onclick="Fotos.capturarCamera('horimetro')" class="camera-btn"><i class="fas fa-camera"></i>Camera</button></div><div id="fotoHorimetroPreview" class="photo-preview"></div></div>
+      <div class="checklist-card p-4 md:p-5 mb-5"><h2 class="font-display text-xl mb-2">Fotos do Servico (max. 10)</h2><div class="photo-input-group"><input type="file" id="fotosServico" multiple accept="image/*" class="form-input flex-1"><button type="button" onclick="Fotos.capturarCamera('servico')" class="camera-btn"><i class="fas fa-camera"></i>Camera</button></div><div id="fotosPreview" class="photo-preview"></div></div>
+      <div class="checklist-card p-4 md:p-5 mb-5"><h2 class="font-display text-xl mb-2"><i class="fas fa-exclamation-triangle"></i> Fotos das Pendencias (max. 10)</h2><div class="photo-input-group"><input type="file" id="fotosPendenciasInput" multiple accept="image/*" class="form-input flex-1"><button type="button" onclick="Fotos.capturarCamera('pendencia')" class="camera-btn"><i class="fas fa-camera"></i>Camera</button></div><div id="fotosPendenciasPreview" class="photo-preview"></div></div>
       <div class="checklist-card p-4 md:p-5 mb-5">
         <h2 class="font-display text-xl mb-3">Assinaturas Digitais</h2>
         <div class="grid md:grid-cols-2 gap-6">
@@ -622,7 +622,7 @@
           <div><select id="userNivel" class="form-input"><option value="admin">Admin</option><option value="tecnico">Tecnico</option><option value="visualizador">Visualizador</option></select></div>
         </div>
         <div class="flex gap-3 mb-5 flex-wrap"><button onclick="UserManager.addUser()" class="btn btn-primary"><i class="fas fa-user-plus"></i> Adicionar</button><button onclick="UserManager.cancelEdit()" id="userCancelBtn" class="btn btn-secondary" style="display:none">Cancelar</button></div>
-        <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-[var(--bg-secondary)]"><tr><th class="p-2">Nome</th><th class="p-2">Login</th><th class="p-2">Nivel</th><th class="p-2">Acoes</th></table></thead><tbody id="userTableBody"></tbody></table></div>
+        <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-[var(--bg-secondary)]"><tr><th class="p-2">Nome</th><th class="p-2">Login</th><th class="p-2">Nivel</th><th class="p-2">Acoes</th></tr></thead><tbody id="userTableBody"></tbody></table></div>
       </div>
     </div>
 
