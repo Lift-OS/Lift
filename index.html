@@ -1179,9 +1179,185 @@ var Agendamentos={carregar:function(){Storage.loadAgendamentos();this.atualizarL
 
 var Jornada={carregar:function(){if(!Auth.currentUser||!Auth.can('jornada_registrar'))return;var s=Storage.loadJornada(Auth.currentUser.login),hoje=dataHojeISO();if(s&&s.data===hoje){State.jornada=s;$('btnNovaJornada').style.display='inline-flex'}else{State.jornada={etapa:'inicio',dados:{},data:hoje};Storage.saveJornada(Auth.currentUser.login,State.jornada);$('btnNovaJornada').style.display='none'}this.renderizar()},
   novaJornada:function(){if(!confirm('Iniciar nova jornada?'))return;State.jornada={etapa:'inicio',dados:{},data:dataHojeISO()};Storage.saveJornada(Auth.currentUser.login,State.jornada);this.renderizar();showToast('Nova jornada')},
-  renderizar:function(){var c=$('jornadaSteps'),sd=$('jornadaStatus');if(!c||!sd)return;var ag=Agendamentos.obterAgendamentosFuturos(Auth.currentUser.login),h='';if(ag.total>0){h+='<div style="font-size:1.1rem;font-weight:700;color:#fbbf24;margin-bottom:10px"><i class="fas fa-calendar-check" style="margin-right:6px"></i>'+ag.total+' agendamento(s)</div>';if(ag.hoje.length){h+='<div style="margin-bottom:12px"><div style="font-size:.8rem;color:var(--success);font-weight:700;margin-bottom:6px">HOJE</div>';ag.hoje.forEach(function(a){var osN=a.equipamento||'';h+='<span style="display:inline-block;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.4);color:#6ee7b7;padding:6px 14px;border-radius:10px;margin:4px;font-size:1rem;font-weight:600"><i class="fas fa-clock" style="color:#10b981;margin-right:6px"></i>'+esc(a.horario)+(osN?' <span style="background:var(--accent);color:#fff;padding:2px 8px;border-radius:6px;font-size:.8rem;font-weight:700;margin-left:6px">'+esc(osN)+'</span>':'')+' — <strong style="color:#f8fafc">'+esc(a.cliente)+'</strong></span>'});h+='</div>'}if(ag.futuros.length){h+='<div style="margin-bottom:12px"><div style="font-size:.8rem;color:var(--info);font-weight:700;margin-bottom:6px">PROXIMOS</div>';ag.futuros.forEach(function(a){var osN=a.equipamento||'';h+='<div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:10px;padding:8px 14px;margin:4px;font-size:.95rem;color:#93c5fd"><i class="fas fa-calendar-day" style="color:#3b82f6;margin-right:6px"></i><strong>'+esc(a.data.split('-').reverse().join('/'))+'</strong> — '+esc(a.horario)+(osN?' <span style="background:var(--accent);color:#fff;padding:2px 8px;border-radius:6px;font-size:.75rem;font-weight:700;margin-left:6px">'+esc(osN)+'</span>':'')+' — <strong style="color:#f8fafc">'+esc(a.cliente)+'</strong></div>'});h+='</div>'}}else h='<div style="font-size:.95rem;color:#6b7280"><i class="fas fa-info-circle" style="margin-right:6px"></i>Nenhum agendamento pendente</div>';sd.innerHTML=h;var d=State.jornada.dados||{},e1=d.inicio&&d.inicio.concluido;h='<div class="journey-step '+(e1?'completed':'')+'"><h3><i class="fas fa-play-circle"></i> 1. Inicio do Trabalho</h3>';if(!e1){h+='<div class="grid grid-cols-2 gap-3"><div><label class="text-xs text-[var(--muted)]">Placa *</label><input type="text" id="jornada_placa_inicio" class="form-input" value="'+esc(d.inicio?d.inicio.placa:'')+'" placeholder="ABC-1234" style="border-color:var(--danger)"></div><div><label class="text-xs text-[var(--muted)]">KM Inicial *</label><input type="number" id="jornada_km_inicio" class="form-input" value="'+(d.inicio?d.inicio.km:'')+'" placeholder="0" style="border-color:var(--danger)"></div></div>';h+='<div class="mt-3"><button onclick="Jornada.obterLocalizacao(\'inicio\')" class="location-btn"><i class="fas fa-map-marker-alt"></i> Localizacao *</button> <span id="localizacao_inicio_texto" class="text-xs text-[var(--muted)] ml-2">'+(d.inicio&&d.inicio.localizacao?esc(d.inicio.localizacao):'<span class="text-red-400">Nao obtida</span>')+'</span></div>';h+='<div class="mt-3"><label class="text-xs text-[var(--muted)]">Foto *</label><input type="file" id="jornada_foto_inicio" accept="image/*" capture="environment" class="form-input" style="border-color:var(--danger)"></div>';h+='<button onclick="Jornada.salvarEtapa(\'inicio\')" class="btn btn-primary mt-3"><i class="fas fa-save"></i> Registrar Inicio</button>'}else{h+='<div class="text-green-400 text-sm"><i class="fas fa-check-circle"></i> '+esc(d.inicio.dataHora)+' — <strong>'+esc(d.inicio.placa)+'</strong> — KM: <strong>'+esc(d.inicio.km)+'</strong>'+(d.inicio.localizacao?' — <i class="fas fa-map-pin"></i> '+esc(d.inicio.localizacao):'')+'</div>';if(d.inicio.foto)h+='<div class="mt-2"><img src="'+d.inicio.foto+'" style="max-width:150px;border-radius:8px;border:1px solid var(--border)"></div>'}h+='</div>';var e2=d.chegada&&d.chegada.concluido;h+='<div class="journey-step '+(e2?'completed':'')+'"><h3><i class="fas fa-flag-checkered"></i> 2. Chegada ao Cliente</h3>';if(!e2&&e1){h+='<div class="mt-2"><button onclick="Jornada.obterLocalizacao(\'chegada\')" class="location-btn"><i class="fas fa-map-marker-alt"></i> Localizacao *</button> <span id="localizacao_chegada_texto" class="text-xs text-[var(--muted)] ml-2">'+(d.chegada&&d.chegada.localizacao?esc(d.chegada.localizacao):'<span class="text-red-400">Nao obtida</span>')+'</span></div>';h+='<div class="mt-3"><label class="text-xs text-[var(--muted)]">Foto *</label><input type="file" id="jornada_foto_chegada" accept="image/*" capture="environment" class="form-input" style="border-color:var(--danger)"></div>';h+='<button onclick="Jornada.salvarEtapa(\'chegada\')" class="btn btn-primary mt-3"><i class="fas fa-save"></i> Registrar Chegada</button>'}else if(e2){h+='<div class="text-green-400 text-sm"><i class="fas fa-check-circle"></i> '+esc(d.chegada.dataHora)+(d.chegada.localizacao?' — <i class="fas fa-map-pin"></i> '+esc(d.chegada.localizacao):'')+'</div>';if(d.chegada.foto)h+='<div class="mt-2"><img src="'+d.chegada.foto+'" style="max-width:150px;border-radius:8px;border:1px solid var(--border)"></div>'}else h+='<div class="text-[var(--warning)] text-sm"><i class="fas fa-hourglass-half"></i> Aguarde registrar inicio.</div>';h+='</div>';var e3=d.final&&d.final.concluido;h+='<div class="journey-step '+(e3?'completed':'')+'"><h3><i class="fas fa-stop-circle"></i> 3. Finalizacao (Retorno)</h3>';if(!e3&&e2){h+='<div class="grid grid-cols-2 gap-3"><div><label class="text-xs text-[var(--muted)]">Placa *</label><input type="text" id="jornada_placa_final" class="form-input" value="'+esc(d.final?d.final.placa:'')+'" placeholder="ABC-1234" style="border-color:var(--danger)"></div><div><label class="text-xs text-[var(--muted)]">KM Final *</label><input type="number" id="jornada_km_final" class="form-input" value="'+(d.final?d.final.km:'')+'" placeholder="0" style="border-color:var(--danger)"></div></div>';h+='<div class="mt-3"><button onclick="Jornada.obterLocalizacao(\'final\')" class="location-btn"><i class="fas fa-map-marker-alt"></i> Localizacao *</button> <span id="localizacao_final_texto" class="text-xs text-[var(--muted)] ml-2">'+(d.final&&d.final.localizacao?esc(d.final.localizacao):'<span class="text-red-400">Nao obtida</span>')+'</span></div>';h+='<div class="mt-3"><label class="text-xs text-[var(--muted)]">Foto *</label><input type="file" id="jornada_foto_final" accept="image/*" capture="environment" class="form-input" style="border-color:var(--danger)"></div>';h+='<button onclick="Jornada.salvarEtapa(\'final\')" class="btn btn-primary mt-3"><i class="fas fa-save"></i> Registrar Finalizacao</button>'}else if(e3){h+='<div class="text-green-400 text-sm"><i class="fas fa-check-circle"></i> '+esc(d.final.dataHora)+' — <strong>'+esc(d.final.placa)+'</strong> — KM: <strong>'+esc(d.final.km)+'</strong>'+(d.final.localizacao?' — <i class="fas fa-map-pin"></i> '+esc(d.final.localizacao):'')+'</div>';if(d.final.foto)h+='<div class="mt-2"><img src="'+d.final.foto+'" style="max-width:150px;border-radius:8px;border:1px solid var(--border)"></div>'}else h+='<div class="text-[var(--warning)] text-sm"><i class="fas fa-hourglass-half"></i> Aguarde registrar chegada.</div>';h+='</div>';if(e2&&!e3)h+='<div class="journey-step"><h3><i class="fas fa-laptop-code"></i> 4. Executar Servico</h3><p class="text-sm text-[var(--muted)]">A OS sera exibida pelo administrador.</p></div>';c.innerHTML=h},
+renderizar:function(){
+  var c=$('jornadaSteps'),sd=$('jornadaStatus');
+  if(!c||!sd)return;
+  var ag=Agendamentos.obterAgendamentosFuturos(Auth.currentUser.login),h='';
+  if(ag.total>0){
+    h+='<div style="font-size:1.1rem;font-weight:700;color:#fbbf24;margin-bottom:10px"><i class="fas fa-calendar-check" style="margin-right:6px"></i>'+ag.total+' agendamento(s)</div>';
+    if(ag.hoje.length){
+      h+='<div style="margin-bottom:12px"><div style="font-size:.8rem;color:var(--success);font-weight:700;margin-bottom:6px">HOJE</div>';
+      ag.hoje.forEach(function(a){
+        var osN=a.equipamento||'';
+        h+='<span style="display:inline-block;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.4);color:#6ee7b7;padding:6px 14px;border-radius:10px;margin:4px;font-size:1rem;font-weight:600"><i class="fas fa-clock" style="color:#10b981;margin-right:6px"></i>'+esc(a.horario)+(osN?' <span style="background:var(--accent);color:#fff;padding:2px 8px;border-radius:6px;font-size:.8rem;font-weight:700;margin-left:6px">'+esc(osN)+'</span>':'')+' — <strong style="color:#f8fafc">'+esc(a.cliente)+'</strong></span>'
+      });
+      h+='</div>'
+    }
+    if(ag.futuros.length){
+      h+='<div style="margin-bottom:12px"><div style="font-size:.8rem;color:var(--info);font-weight:700;margin-bottom:6px">PROXIMOS</div>';
+      ag.futuros.forEach(function(a){
+        var osN=a.equipamento||'';
+        h+='<div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:10px;padding:8px 14px;margin:4px;font-size:.95rem;color:#93c5fd"><i class="fas fa-calendar-day" style="color:#3b82f6;margin-right:6px"></i><strong>'+esc(a.data.split('-').reverse().join('/'))+'</strong> — '+esc(a.horario)+(osN?' <span style="background:var(--accent);color:#fff;padding:2px 8px;border-radius:6px;font-size:.75rem;font-weight:700;margin-left:6px">'+esc(osN)+'</span>':'')+' — <strong style="color:#f8fafc">'+esc(a.cliente)+'</strong></div>'
+      });
+      h+='</div>'
+    }
+  }else{
+    h='<div style="font-size:.95rem;color:#6b7280"><i class="fas fa-info-circle" style="margin-right:6px"></i>Nenhum agendamento pendente</div>';
+  }
+  sd.innerHTML=h;
+  
+  var d=State.jornada.dados||{},e1=d.inicio&&d.inicio.concluido;
+  
+  // Etapa 1 - Inicio
+  h='<div class="journey-step '+(e1?'completed':'')+'"><h3><i class="fas fa-play-circle"></i> 1. Inicio do Trabalho</h3>';
+  if(!e1){
+    h+='<div class="grid grid-cols-2 gap-3"><div><label class="text-xs text-[var(--muted)]">Placa *</label><input type="text" id="jornada_placa_inicio" class="form-input" value="'+esc(d.inicio?d.inicio.placa:'')+'" placeholder="ABC-1234" style="border-color:var(--danger)"></div><div><label class="text-xs text-[var(--muted)]">KM Inicial *</label><input type="number" id="jornada_km_inicio" class="form-input" value="'+(d.inicio?d.inicio.km:'')+'" placeholder="0" style="border-color:var(--danger)"></div></div>';
+    h+='<div class="mt-3"><button onclick="Jornada.obterLocalizacao(\'inicio\')" class="location-btn"><i class="fas fa-map-marker-alt"></i> Localizacao *</button> <span id="localizacao_inicio_texto" class="text-xs text-[var(--muted)] ml-2">'+(d.inicio&&d.inicio.localizacao?esc(d.inicio.localizacao):'<span class="text-red-400">Nao obtida</span>')+'</span></div>';
+    h+='<div class="mt-3"><label class="text-xs text-[var(--muted)]">Foto *</label><div class="photo-input-group"><input type="file" id="jornada_foto_inicio" accept="image/*" capture="environment" class="form-input flex-1" style="border-color:var(--danger)"><button type="button" onclick="Jornada.capturarCameraJornada(\'inicio\')" class="camera-btn"><i class="fas fa-camera"></i>Camera</button></div></div>';
+    h+='<button onclick="Jornada.salvarEtapa(\'inicio\')" class="btn btn-primary mt-3"><i class="fas fa-save"></i> Registrar Inicio</button>';
+  }else{
+    h+='<div class="text-green-400 text-sm"><i class="fas fa-check-circle"></i> '+esc(d.inicio.dataHora)+' — <strong>'+esc(d.inicio.placa)+'</strong> — KM: <strong>'+esc(d.inicio.km)+'</strong>'+(d.inicio.localizacao?' — <i class="fas fa-map-pin"></i> '+esc(d.inicio.localizacao):'')+'</div>';
+    if(d.inicio.foto)h+='<div class="mt-2"><img src="'+d.inicio.foto+'" style="max-width:150px;border-radius:8px;border:1px solid var(--border)"></div>';
+  }
+  h+='</div>';
+  
+  // Etapa 2 - Chegada
+  var e2=d.chegada&&d.chegada.concluido;
+  h+='<div class="journey-step '+(e2?'completed':'')+'"><h3><i class="fas fa-flag-checkered"></i> 2. Chegada ao Cliente</h3>';
+  if(!e2&&e1){
+    h+='<div class="mt-2"><button onclick="Jornada.obterLocalizacao(\'chegada\')" class="location-btn"><i class="fas fa-map-marker-alt"></i> Localizacao *</button> <span id="localizacao_chegada_texto" class="text-xs text-[var(--muted)] ml-2">'+(d.chegada&&d.chegada.localizacao?esc(d.chegada.localizacao):'<span class="text-red-400">Nao obtida</span>')+'</span></div>';
+    h+='<div class="mt-3"><label class="text-xs text-[var(--muted)]">Foto *</label><div class="photo-input-group"><input type="file" id="jornada_foto_chegada" accept="image/*" capture="environment" class="form-input flex-1" style="border-color:var(--danger)"><button type="button" onclick="Jornada.capturarCameraJornada(\'chegada\')" class="camera-btn"><i class="fas fa-camera"></i>Camera</button></div></div>';
+    h+='<button onclick="Jornada.salvarEtapa(\'chegada\')" class="btn btn-primary mt-3"><i class="fas fa-save"></i> Registrar Chegada</button>';
+  }else if(e2){
+    h+='<div class="text-green-400 text-sm"><i class="fas fa-check-circle"></i> '+esc(d.chegada.dataHora)+(d.chegada.localizacao?' — <i class="fas fa-map-pin"></i> '+esc(d.chegada.localizacao):'')+'</div>';
+    if(d.chegada.foto)h+='<div class="mt-2"><img src="'+d.chegada.foto+'" style="max-width:150px;border-radius:8px;border:1px solid var(--border)"></div>';
+  }else{
+    h+='<div class="text-[var(--warning)] text-sm"><i class="fas fa-hourglass-half"></i> Aguarde registrar inicio.</div>';
+  }
+  h+='</div>';
+  
+  // Etapa 3 - Finalizacao
+  var e3=d.final&&d.final.concluido;
+  h+='<div class="journey-step '+(e3?'completed':'')+'"><h3><i class="fas fa-stop-circle"></i> 3. Finalizacao (Retorno)</h3>';
+  if(!e3&&e2){
+    h+='<div class="grid grid-cols-2 gap-3"><div><label class="text-xs text-[var(--muted)]">Placa *</label><input type="text" id="jornada_placa_final" class="form-input" value="'+esc(d.final?d.final.placa:'')+'" placeholder="ABC-1234" style="border-color:var(--danger)"></div><div><label class="text-xs text-[var(--muted)]">KM Final *</label><input type="number" id="jornada_km_final" class="form-input" value="'+(d.final?d.final.km:'')+'" placeholder="0" style="border-color:var(--danger)"></div></div>';
+    h+='<div class="mt-3"><button onclick="Jornada.obterLocalizacao(\'final\')" class="location-btn"><i class="fas fa-map-marker-alt"></i> Localizacao *</button> <span id="localizacao_final_texto" class="text-xs text-[var(--muted)] ml-2">'+(d.final&&d.final.localizacao?esc(d.final.localizacao):'<span class="text-red-400">Nao obtida</span>')+'</span></div>';
+    h+='<div class="mt-3"><label class="text-xs text-[var(--muted)]">Foto *</label><div class="photo-input-group"><input type="file" id="jornada_foto_final" accept="image/*" capture="environment" class="form-input flex-1" style="border-color:var(--danger)"><button type="button" onclick="Jornada.capturarCameraJornada(\'final\')" class="camera-btn"><i class="fas fa-camera"></i>Camera</button></div></div>';
+    h+='<button onclick="Jornada.salvarEtapa(\'final\')" class="btn btn-primary mt-3"><i class="fas fa-save"></i> Registrar Finalizacao</button>';
+  }else if(e3){
+    h+='<div class="text-green-400 text-sm"><i class="fas fa-check-circle"></i> '+esc(d.final.dataHora)+' — <strong>'+esc(d.final.placa)+'</strong> — KM: <strong>'+esc(d.final.km)+'</strong>'+(d.final.localizacao?' — <i class="fas fa-map-pin"></i> '+esc(d.final.localizacao):'')+'</div>';
+    if(d.final.foto)h+='<div class="mt-2"><img src="'+d.final.foto+'" style="max-width:150px;border-radius:8px;border:1px solid var(--border)"></div>';
+  }else{
+    h+='<div class="text-[var(--warning)] text-sm"><i class="fas fa-hourglass-half"></i> Aguarde registrar chegada.</div>';
+  }
+  h+='</div>';
+  
+  if(e2&&!e3){
+    h+='<div class="journey-step"><h3><i class="fas fa-laptop-code"></i> 4. Executar Servico</h3><p class="text-sm text-[var(--muted)]">A OS sera exibida pelo administrador.</p></div>';
+  }
+  c.innerHTML=h;
+},
   obterLocalizacao:function(et){if(!navigator.geolocation){showToast('GPS nao suportado',true);return}showToast('Obtendo localizacao...');navigator.geolocation.getCurrentPosition(function(p){var t=p.coords.latitude.toFixed(6)+', '+p.coords.longitude.toFixed(6);var s=$('localizacao_'+et+'_texto');if(s)s.innerHTML=esc(t);if(!State.jornada.dados[et])State.jornada.dados[et]={};State.jornada.dados[et].localizacao=t;Storage.saveJornada(Auth.currentUser.login,State.jornada);showToast('Localizacao obtida')},function(e){showToast('Erro GPS: '+e.message,true)})},
-  salvarEtapa:async function(et){if(!Auth.can('jornada_registrar')){showToast('Sem permissao',true);return}var de={},foto=null;if(et==='inicio'){var pl=$('jornada_placa_inicio').value.trim(),km=$('jornada_km_inicio').value.trim(),lo=(State.jornada.dados.inicio||{}).localizacao||'',fi=$('jornada_foto_inicio');if(!pl||!km||!lo||!fi||!fi.files||!fi.files.length){showToast('Preencha todos os campos obrigatorios',true);return}foto=await Fotos.compressFile(fi.files[0]);de={placa:pl,km:km,localizacao:lo,foto:foto,dataHora:agoraBr(),concluido:true};State.jornada.dados.inicio=de;State.jornada.etapa='chegada'}else if(et==='chegada'){var lo=(State.jornada.dados.chegada||{}).localizacao||'',fc=$('jornada_foto_chegada');if(!lo||!fc||!fc.files||!fc.files.length){showToast('Preencha todos os campos',true);return}foto=await Fotos.compressFile(fc.files[0]);de={localizacao:lo,foto:foto,dataHora:agoraBr(),concluido:true};State.jornada.dados.chegada=de;State.jornada.etapa='trabalhando'}else if(et==='final'){var pl=$('jornada_placa_final').value.trim(),km=$('jornada_km_final').value.trim(),lo=(State.jornada.dados.final||{}).localizacao||'',ff=$('jornada_foto_final');if(!pl||!km||!lo||!ff||!ff.files||!ff.files.length){showToast('Preencha todos os campos',true);return}foto=await Fotos.compressFile(ff.files[0]);de={placa:pl,km:km,localizacao:lo,foto:foto,dataHora:agoraBr(),concluido:true};State.jornada.dados.final=de;State.jornada.etapa='finalizado'}Storage.saveJornada(Auth.currentUser.login,State.jornada);this.renderizar();showToast('Etapa '+et+' registrada!');SyncQueue.add('upsert','jornada',{id:Date.now(),tecnico:Auth.currentUser.login,data:hojeBr(),etapa:et,placa:de.placa||'',km:de.km||'',localizacao:de.localizacao||'',foto:foto||'',dataHora:de.dataHora||''})}
+  
+  capturarCameraJornada: function(etapa){
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.capture = 'environment';
+  input.onchange = function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = async function(ev){
+      try{
+        var compressed = await Fotos.compress(ev.target.result);
+        if(!State.jornada.dados[etapa]) State.jornada.dados[etapa] = {};
+        State.jornada.dados[etapa].foto = compressed;
+        Storage.saveJornada(Auth.currentUser.login, State.jornada);
+        
+        var previewDiv = document.getElementById('jornada_foto_' + etapa + '_preview');
+        if(!previewDiv){
+          previewDiv = document.createElement('div');
+          previewDiv.id = 'jornada_foto_' + etapa + '_preview';
+          previewDiv.className = 'mt-2';
+          var parent = document.getElementById('jornada_foto_' + etapa).parentElement.parentElement;
+          parent.appendChild(previewDiv);
+        }
+        previewDiv.innerHTML = '<div class="photo-item"><img src="'+compressed+'"><div class="photo-remove" onclick="Jornada.removerFotoJornada(\''+etapa+'\')">x</div></div>';
+        
+        showToast('Foto capturada para ' + etapa);
+      }catch(err){
+        showToast('Erro ao processar foto', true);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+},
+
+removerFotoJornada: function(etapa){
+  if(State.jornada.dados[etapa]){
+    delete State.jornada.dados[etapa].foto;
+    Storage.saveJornada(Auth.currentUser.login, State.jornada);
+    var previewDiv = document.getElementById('jornada_foto_' + etapa + '_preview');
+    if(previewDiv) previewDiv.innerHTML = '';
+    var fileInput = document.getElementById('jornada_foto_' + etapa);
+    if(fileInput) fileInput.value = '';
+    showToast('Foto removida');
+  }
+},
+  
+salvarEtapa:async function(et){
+  if(!Auth.can('jornada_registrar')){showToast('Sem permissao',true);return}
+  var de={},foto=null;
+  if(et==='inicio'){
+    var pl=$('jornada_placa_inicio').value.trim(),km=$('jornada_km_inicio').value.trim(),lo=(State.jornada.dados.inicio||{}).localizacao||'';
+    var fi=$('jornada_foto_inicio');
+    var fotoSalva = (State.jornada.dados.inicio||{}).foto;
+    if(!pl||!km||!lo){showToast('Preencha todos os campos obrigatorios',true);return}
+    if((!fi||!fi.files||!fi.files.length) && !fotoSalva){showToast('Foto obrigatoria',true);return}
+    if(fi && fi.files && fi.files.length){
+      foto=await Fotos.compressFile(fi.files[0]);
+    } else if(fotoSalva){
+      foto=fotoSalva;
+    }
+    de={placa:pl,km:km,localizacao:lo,foto:foto,dataHora:agoraBr(),concluido:true};
+    State.jornada.dados.inicio=de;
+    State.jornada.etapa='chegada';
+  }else if(et==='chegada'){
+    var lo=(State.jornada.dados.chegada||{}).localizacao||'';
+    var fc=$('jornada_foto_chegada');
+    var fotoSalva = (State.jornada.dados.chegada||{}).foto;
+    if(!lo){showToast('Preencha todos os campos',true);return}
+    if((!fc||!fc.files||!fc.files.length) && !fotoSalva){showToast('Foto obrigatoria',true);return}
+    if(fc && fc.files && fc.files.length){
+      foto=await Fotos.compressFile(fc.files[0]);
+    } else if(fotoSalva){
+      foto=fotoSalva;
+    }
+    de={localizacao:lo,foto:foto,dataHora:agoraBr(),concluido:true};
+    State.jornada.dados.chegada=de;
+    State.jornada.etapa='trabalhando';
+  }else if(et==='final'){
+    var pl=$('jornada_placa_final').value.trim(),km=$('jornada_km_final').value.trim(),lo=(State.jornada.dados.final||{}).localizacao||'';
+    var ff=$('jornada_foto_final');
+    var fotoSalva = (State.jornada.dados.final||{}).foto;
+    if(!pl||!km||!lo){showToast('Preencha todos os campos',true);return}
+    if((!ff||!ff.files||!ff.files.length) && !fotoSalva){showToast('Foto obrigatoria',true);return}
+    if(ff && ff.files && ff.files.length){
+      foto=await Fotos.compressFile(ff.files[0]);
+    } else if(fotoSalva){
+      foto=fotoSalva;
+    }
+    de={placa:pl,km:km,localizacao:lo,foto:foto,dataHora:agoraBr(),concluido:true};
+    State.jornada.dados.final=de;
+    State.jornada.etapa='finalizado';
+  }
+  Storage.saveJornada(Auth.currentUser.login,State.jornada);
+  this.renderizar();
+  showToast('Etapa '+et+' registrada!');
+  SyncQueue.add('upsert','jornada',{id:Date.now(),tecnico:Auth.currentUser.login,data:hojeBr(),etapa:et,placa:de.placa||'',km:de.km||'',localizacao:de.localizacao||'',foto:foto||'',dataHora:de.dataHora||''});
+},
 };
 
 var Fotos={compressFile:function(file){return new Promise(function(resolve,reject){var r=new FileReader();r.onload=function(ev){var img=new Image();img.src=ev.target.result;img.onload=function(){var cv=document.createElement('canvas'),ra=Math.min(800/img.width,600/img.height),nw=Math.max(1,img.width*ra),nh=Math.max(1,img.height*ra);cv.width=nw;cv.height=nh;var cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,nw,nh);cx.drawImage(img,0,0,nw,nh);resolve(cv.toDataURL('image/jpeg',0.7))};img.onerror=reject};r.readAsDataURL(file)})},
