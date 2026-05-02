@@ -8,14 +8,12 @@ function normalizeDate(v){if(!v)return'';if(typeof v==='string'&&v.includes('T')
 function extractTimeFromDate(v){
   if(!v)return'';
   if(typeof v==='string'){
-    /* PRIORIDADE 1: extrair HH:MM diretamente da string (evita conversao de fuso) */
     var m=v.match(/(\d{1,2}):(\d{2})/);
     if(m){
       var hh=parseInt(m[1],10),mm=parseInt(m[2],10);
       if(hh>=0&&hh<=23&&mm>=0&&mm<=59)
         return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
     }
-    /* PRIORIDADE 2: se for formato ISO com T, extrair a parte do horario diretamente */
     if(v.includes('T')){
       var tp=v.split('T')[1];
       if(tp){
@@ -27,16 +25,14 @@ function extractTimeFromDate(v){
         }
       }
     }
-    /* PRIORIDADE 3: ultimo recurso - conversao Date local (pode ter fuso) */
     if(v.includes('T')||v.includes('-')||v.includes('/')){
       var d=new Date(v);
       if(!isNaN(d.getTime()))
         return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
     }
   }
-  /* PRIORIDADE 4: Google Sheets retorna horario como fracao decimal de dia (ex: 0.3333 = 08:00) */
   if(typeof v==='number'){
-    var tm=Math.round(v*1440);/* 24*60=1440 minutos no dia */
+    var tm=Math.round(v*1440);
     if(tm>=0&&tm<1440){
       var rh=Math.floor(tm/60),rm=tm%60;
       return String(rh).padStart(2,'0')+':'+String(rm).padStart(2,'0');
@@ -80,10 +76,8 @@ var Storage={
   saveOSHistory:function(){this.save('os_history',State.osHistory)},
   loadOSHistory:function(){State.osHistory=this.load('os_history')||[]},
   saveCounter:function(){this.save('os_counter',State.osCounter)},
-  /* CORREÇÃO 1/4: parseInt para evitar NaN quando localStorage tem lixo */
   loadCounter:function(){var v=this.load('os_counter');State.osCounter=(typeof v==='number'&&!isNaN(v))?v:0},
   saveOrcCounter:function(){this.save('orc_counter',State.orcCounter)},
-  /* CORREÇÃO 2/4: parseInt para evitar NaN quando localStorage tem lixo */
   loadOrcCounter:function(){var v=this.load('orc_counter');State.orcCounter=(typeof v==='number'&&!isNaN(v))?v:0},
   saveAgendamentos:function(){this.save('agendamentos',State.agendamentos)},
   loadAgendamentos:function(){State.agendamentos=this.load('agendamentos')||[]},
@@ -361,7 +355,7 @@ var Estoque={
     if(em)em.classList.add('hidden');
     filtered.forEach(function(m){
       var r=tb.insertRow();
-      r.innerHTML='<td class="text-xs">'+esc(m.data_hora)+'</td><td><span class="'+(m.tipo==='entrada'?'mov-entrada':'mov-saida')+'">'+(m.tipo==='entrada'?'<i class="fas fa-arrow-down"></i> ENTRADA':'<i class="fas fa-arrow-up"></i> SAIDA')+'</span></td><td><span class="font-mono text-xs">'+esc(m.peca_codigo)+'</span> '+esc(m.peca_descricao)+'</td><td class="font-mono font-bold">'+m.quantidade+'</td><td class="font-mono text-xs">'+esc(m.os_vinculada||'-')+'</td><td class="text-xs">'+esc(m.observacao||'-')+'</td>'
+      r.innerHTML='<td class="text-xs">'+esc(m.data_hora)+'</td><td><span class="'+(m.tipo==='entrada'?'mov-entrada':'mov-saida')+'+'">'+(m.tipo==='entrada'?'<i class="fas fa-arrow-down"></i> ENTRADA':'<i class="fas fa-arrow-up"></i> SAIDA')+'</span></td><td><span class="font-mono text-xs">'+esc(m.peca_codigo)+'</span> '+esc(m.peca_descricao)+'</td><td class="font-mono font-bold">'+m.quantidade+'</td><td class="font-mono text-xs">'+esc(m.os_vinculada||'-')+'</td><td class="text-xs">'+esc(m.observacao||'-')+'</td>'
     })
   },
   updateStats:function(){
@@ -497,7 +491,7 @@ var Timer={interval:null,running:false,paused:false,
    HORAS
    ============================================================ */
 var Horas={calcular:function(){var i=Utils.getVal('horaInicio'),t=Utils.getVal('horaTermino');if(!i||!t)return 0;var total=Utils.timeDiff(i,t),sa=Utils.getVal('horaAlmocoSaida'),re=Utils.getVal('horaAlmocoRetorno');if(sa&&re){var ad=Utils.timeDiff(sa,re);if(ad>0&&ad<720)total-=ad}var h=Math.max(1,Math.ceil(total/60));Utils.setVal('horasTotais',h+'h');this.updateTotal();return h},
-  updateTotal:function(){var hs=Utils.getVal('horasTotais'),min=0;if(hs){var m=hs.match(/(\d+)h/);if(m)min=parseInt(m[1])*60}var ex=Utils.timeToMinutes(Utils.getVal('horasExtras')),nt=Utils.timeToMinutes(Utils.getVal('adicionalNoturno')),tot=min+ex+nt,h=Math.floor(tot/60),m=tot%60;Utils.setVal('totalGeral',String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'))},
+  updateTotal:function(){var hs=Utils.getVal('horasTotais'),min=0;if(hs){var m=hs.match(/(\d+)h/);if(m)min=parseInt(m[1])*60}var ex=Utils.timeToMinutes(Utils.getVal('horasExtras')),nt=Utils.timeToMinutes(Utils.getVal('adicionalNoturno')),tot=min+ex+nt,h=Math.floor(tot/60),mm=tot%60;Utils.setVal('totalGeral',String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0'))},
   initListeners:function(){var self=this;['horaInicio','horaTermino','horaAlmocoSaida','horaAlmocoRetorno'].forEach(function(id){var el=$(id);if(el)el.addEventListener('change',function(){self.calcular()})});['horasExtras','adicionalNoturno'].forEach(function(id){var el=$(id);if(el)el.addEventListener('input',function(){self.updateTotal()})})}
 };
 
@@ -619,10 +613,9 @@ var Fotos={compressFile:function(file){return new Promise(function(resolve,rejec
 };
 
 /* ============================================================
-   UTILS (contem CORRECOES 3/4 e 4/4)
+   UTILS
    ============================================================ */
 var Utils={
-  /* CORREÇÃO 3/4: Garantir que State.osCounter é numero valido antes de incrementar */
   generateOSNumber:function(){
     if(typeof State.osCounter!=='number'||isNaN(State.osCounter))State.osCounter=0;
     State.osCounter++;
@@ -630,7 +623,6 @@ var Utils={
     var n=new Date();
     return'OS-'+n.getFullYear().toString().slice(-2)+String(n.getMonth()+1).padStart(2,'0')+'-'+String(State.osCounter).padStart(4,'0')
   },
-  /* CORREÇÃO 4/4: Garantir que State.orcCounter é numero valido antes de incrementar */
   generateOrcNumber:function(){
     if(typeof State.orcCounter!=='number'||isNaN(State.orcCounter))State.orcCounter=0;
     State.orcCounter++;
@@ -704,9 +696,7 @@ document.addEventListener('DOMContentLoaded',function(){
     App.init()
   }
 });
-</script>
-<div class="header-pull-indicator" id="headerPullIndicator"></div>
-<script>
+
 /* === HEADER AUTO-HIDE MOBILE === */
 (function(){
   var header=null,indicator=null,lastScrollY=0,ticking=false,isMobile=false,hidden=false,scrollThreshold=8,TOUCH_ZONE=18;
@@ -741,10 +731,10 @@ document.addEventListener('DOMContentLoaded',function(){
   }
   function show(){
     if(!hidden||!header)return;
-    hidden=false;
-    header.classList.remove('header-hidden');
-    if(indicator)indicator.classList.remove('visible')
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
-  else init()
+hidden=false;
+header.classList.remove('header-hidden');
+if(indicator)indicator.classList.remove('visible')
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
+else init()
 })();
