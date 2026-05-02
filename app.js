@@ -723,12 +723,18 @@ document.addEventListener('DOMContentLoaded',function(){
     else if(diff<-scrollThreshold){if(hidden)show()}
     lastScrollY=sy
   }
-  function hide(){
-    if(!hidden||!header)return;
-    hidden=false;
-    header.classList.remove('header-hidden');
-    if(indicator)indicator.classList.remove('visible')
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
-  else init()
-})();
+      function hide(){
+        if(hidden||!header)return;
+        hidden=true;
+        header.classList.add('header-hidden');
+        if(indicator)indicator.classList.add('visible')
+      }
+      function show(){
+        if(!hidden||!header)return;
+        hidden=false;
+        header.classList.remove('header-hidden');
+        if(indicator)indicator.classList.remove('visible')
+      }
+      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
+      else init()
+    })();
