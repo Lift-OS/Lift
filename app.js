@@ -355,7 +355,7 @@ var Estoque={
     if(em)em.classList.add('hidden');
     filtered.forEach(function(m){
       var r=tb.insertRow();
-      r.innerHTML='<td class="text-xs">'+esc(m.data_hora)+'</td><td><span class="'+(m.tipo==='entrada'?'mov-entrada':'mov-saida')+'+'">'+(m.tipo==='entrada'?'<i class="fas fa-arrow-down"></i> ENTRADA':'<i class="fas fa-arrow-up"></i> SAIDA')+'</span></td><td><span class="font-mono text-xs">'+esc(m.peca_codigo)+'</span> '+esc(m.peca_descricao)+'</td><td class="font-mono font-bold">'+m.quantidade+'</td><td class="font-mono text-xs">'+esc(m.os_vinculada||'-')+'</td><td class="text-xs">'+esc(m.observacao||'-')+'</td>'
+      r.innerHTML='<td class="text-xs">'+esc(m.data_hora)+'</td><td><span class="'+(m.tipo==='entrada'?'mov-entrada':'mov-saida')+'">'+(m.tipo==='entrada'?'<i class="fas fa-arrow-down"></i> ENTRADA':'<i class="fas fa-arrow-up"></i> SAIDA')+'</span></td><td><span class="font-mono text-xs">'+esc(m.peca_codigo)+'</span> '+esc(m.peca_descricao)+'</td><td class="font-mono font-bold">'+m.quantidade+'</td><td class="font-mono text-xs">'+esc(m.os_vinculada||'-')+'</td><td class="text-xs">'+esc(m.observacao||'-')+'</td>'
     })
   },
   updateStats:function(){
