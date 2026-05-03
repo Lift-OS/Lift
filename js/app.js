@@ -171,6 +171,20 @@ window.App = {
       if (window.Auth.can('sincronizar')) window.GoogleSheets.fetchFromSheet();
     });
     window.addEventListener('offline', () => showToast('Sem conexão', true));
+
+    // ========== NOVOS MÓDULOS (online, heartbeat, notificações) ==========
+    // Inicia heartbeat (para aparecer como online)
+    if (window.Auth.can('heartbeat') && window.Heartbeat) {
+      window.Heartbeat.start();
+    }
+    // Inicia widget de usuários online
+    if (window.Auth.can('heartbeat') && window.OnlineUsers) {
+      window.OnlineUsers.start();
+    }
+    // Inicia notificações
+    if (window.Notificacoes) {
+      window.Notificacoes.init();
+    }
   }
 };
 
