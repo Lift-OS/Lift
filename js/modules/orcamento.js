@@ -1,18 +1,9 @@
-// modules/orcamento.js - Módulo de Orçamentos (completo e corrigido)
+// modules/orcamento.js - Módulo de Orçamentos (corrigido: updateStats com segurança)
 window.OrcamentoModule = {
-  state: { itens: [], editId: null },
-  // ... outros métodos ...
-  loadFromSync(orcamentos) {
-    if (Array.isArray(orcamentos) && orcamentos.length) {
-      window.State.orcamentos = orcamentos;
-      window.Storage.saveOrcamentos();
-      this.renderLista();
-      this.updateStats();
-      this.preencherClientes();
-    }
+  state: {
+    itens: [],
+    editId: null
   },
-  // ... resto dos métodos ...
-};
 
   // ========== PERSISTÊNCIA AUTOMÁTICA ==========
   salvarEstado() {
@@ -83,9 +74,7 @@ window.OrcamentoModule = {
       if (window.SignatureOrc) window.SignatureOrc.init();
     }, 200);
     this.ativarAutoSave();
-    // Restaura estado salvo anteriormente
     this.restaurarEstado();
-    // Se não há dados, inicia novo
     if (!this.state.itens.length && !window.Utils.getVal('orc_cliente')) {
       this.novo();
     }
@@ -205,12 +194,42 @@ window.OrcamentoModule = {
       window.State.orcamentos = orcamentos;
       window.Storage.saveOrcamentos();
       this.renderLista();
-      this.updateStats();
+      // Só atualiza estatísticas se a página de orçamento estiver visível
+      if (document.getElementById('statOrcTotal')) {
+        this.updateStats();
+      }
       this.preencherClientes();
     }
   },
 
-  // Métodos auxiliares (já existentes, mantêm-se iguais)
+  // ========== ESTATÍSTICAS (SEGURAS CONTRA NULOS) ==========
+  updateStats() {
+    // Verifica se a página de orçamento está ativa (elementos existem)
+    const elTotal = document.getElementById('statOrcTotal');
+    if (!elTotal) return; // Sai silenciosamente se a aba não estiver ativa
+
+    const total = window.State.orcamentos.length;
+    const stats = { rascunho: 0, enviado: 0, aprovado: 0, rejeitado: 0 };
+    let valorAprovado = 0;
+    window.State.orcamentos.forEach(orc => {
+      stats[orc.status] = (stats[orc.status] || 0) + 1;
+      if (orc.status === 'aprovado') valorAprovado += orc.total;
+    });
+
+    const elRascunho = document.getElementById('statOrcRascunho');
+    const elEnviado = document.getElementById('statOrcEnviado');
+    const elAprovado = document.getElementById('statOrcAprovado');
+    const elRejeitado = document.getElementById('statOrcRejeitado');
+    const elValor = document.getElementById('statOrcValorTotal');
+
+    if (elRascunho) elRascunho.innerText = stats.rascunho;
+    if (elEnviado) elEnviado.innerText = stats.enviado;
+    if (elAprovado) elAprovado.innerText = stats.aprovado;
+    if (elRejeitado) elRejeitado.innerText = stats.rejeitado;
+    if (elValor) elValor.innerText = window.Utils.moneyFormat(valorAprovado);
+  },
+
+  // ========== DEMAIS MÉTODOS (preencherClientes, preencherTecnicos, etc.) ==========
   preencherClientes() {
     const datalist = document.getElementById('orcClientesList');
     if (!datalist) return;
@@ -481,22 +500,6 @@ window.OrcamentoModule = {
     });
   },
 
-  updateStats() {
-    const total = window.State.orcamentos.length;
-    const stats = { rascunho: 0, enviado: 0, aprovado: 0, rejeitado: 0 };
-    let valorAprovado = 0;
-    window.State.orcamentos.forEach(orc => {
-      stats[orc.status] = (stats[orc.status] || 0) + 1;
-      if (orc.status === 'aprovado') valorAprovado += orc.total;
-    });
-    document.getElementById('statOrcTotal').innerText = total;
-    document.getElementById('statOrcRascunho').innerText = stats.rascunho;
-    document.getElementById('statOrcEnviado').innerText = stats.enviado;
-    document.getElementById('statOrcAprovado').innerText = stats.aprovado;
-    document.getElementById('statOrcRejeitado').innerText = stats.rejeitado;
-    document.getElementById('statOrcValorTotal').innerText = window.Utils.moneyFormat(valorAprovado);
-  },
-
   loadEventListeners() {
     const btnNovo = document.getElementById('btnOrcNovo');
     if (btnNovo) btnNovo.onclick = () => this.novo();
@@ -535,11 +538,14 @@ window.OrcamentoModule = {
     let itensHtml = '';
     (orc.itens || []).forEach((it, i) => {
       itensHtml += `
-        <tr><td class="p-2 border-b">${i+1}</td><td class="p-2 border-b">${window.esc(it.descricao)}</td>
-        <td class="p-2 border-b text-center">${window.esc(it.tipo)}</td>
-        <td class="p-2 border-b text-center">${it.quantidade||0}</td>
-        <td class="p-2 border-b text-right">${window.Utils.moneyFormat(it.valor_unitario)}</td>
-        <td class="p-2 border-b text-right font-bold">${window.Utils.moneyFormat((it.quantidade||0)*(it.valor_unitario||0))}</td></tr>
+        <tr>
+          <td class="p-2 border-b">${i+1}</td>
+          <td class="p-2 border-b">${window.esc(it.descricao)}</td>
+          <td class="p-2 border-b text-center">${window.esc(it.tipo)}</td>
+          <td class="p-2 border-b text-center">${it.quantidade||0}</td>
+          <td class="p-2 border-b text-right">${window.Utils.moneyFormat(it.valor_unitario)}</td>
+          <td class="p-2 border-b text-right font-bold">${window.Utils.moneyFormat((it.quantidade||0)*(it.valor_unitario||0))}</td>
+        </tr>
       `;
     });
     let html = `
