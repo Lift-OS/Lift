@@ -93,24 +93,51 @@ window.Signature = {
     canvas.addEventListener('touchend', endDraw);
   },
 
-  clear(who) {
+clear(who) {
+  const canvas = this.canvases[who];
+  const ctx = this.ctx[who];
+  if (!canvas || !ctx) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+
+  const inputId = who === 'tec' ? 'assinaturaTecnicoData' : 'assinaturaClienteData';
+  const input = document.getElementById(inputId);
+  if (input) input.value = '';
+
+  // Não exibe toast aqui (será exibido apenas quando chamado pelo botão)
+}
+
+  save(who) {
+    const canvas = this.canvases[who];
+    if (!canvas) return;
+    const dataURL = canvas.toDataURL('image/png');
+    const inputId = who === 'tec' ? 'assinaturaTecnicoData' : 'assinaturaClienteData';
+    document.getElementById(inputId).value = dataURL;
+    showToast(`Assinatura do ${who === 'tec' ? 'técnico' : 'cliente'} salva`);
+  },
+
+  loadFromData(who, dataURL) {
+    if (!dataURL) return;
     const canvas = this.canvases[who];
     const ctx = this.ctx[who];
     if (!canvas || !ctx) return;
     
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.beginPath(); // evita traços fantasmas
-    
-    const inputId = who === 'tec' ? 'assinaturaTecnicoData' : 'assinaturaClienteData';
-    const input = document.getElementById(inputId);
-    if (input) input.value = '';
-    
-    showToast(`Assinatura do ${who === 'tec' ? 'técnico' : 'cliente'} limpa`);
+    const img = new Image();
+    img.onload = () => {
+      this._resize(who);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const inputId = who === 'tec' ? 'assinaturaTecnicoData' : 'assinaturaClienteData';
+      document.getElementById(inputId).value = dataURL;
+    };
+    img.src = dataURL;
+  }
+};    showToast(`Assinatura do ${who === 'tec' ? 'técnico' : 'cliente'} limpa`);
   },
 
   save(who) {
