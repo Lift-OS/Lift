@@ -52,6 +52,11 @@ window.PageLoader = {
       case 'permissoes': if (window.PermissoesModule) window.PermissoesModule.init(); break;
       case 'usuarios': if (window.UserManager) window.UserManager.init(); break;
     }
+    
+    // Antes de substituir o container, salva estado do orçamento se estiver ativo
+if (window.OrcamentoModule && window.OrcamentoModule.salvarEstado) {
+  window.OrcamentoModule.salvarEstado();
+}
 
     // Restaura dados do cliente APENAS uma vez por página (OS ou Orçamento)
     if ((pageName === 'os' || pageName === 'orcamento') && window.ClientesModule && window.ClientesModule.tryRestaurarDados) {
