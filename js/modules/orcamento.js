@@ -653,120 +653,113 @@ window.OrcamentoModule = {
 
 // Assinatura para orçamento
 window.SignatureOrc = {
-  canvas: null,
-  drawing: false,
+    canvas: null,
+    drawing: false,
+    ctx: null,
 
-  init() {
-    this.canvas = document.getElementById('sigOrcCanvas');
-    if (!this.canvas) return;
-    this.clear();
-    this._bindEvents();
-  },
+    init() {
+        this.canvas = document.getElementById('sigOrcCanvas');
+        if (!this.canvas) return;
+        this.ctx = this.canvas.getContext('2d');
+        this.resize();
+        this.clear();
+        this.bindEvents();
+        // Redimensiona se a janela for redimensionada
+        window.addEventListener('resize', () => this.resize());
+    },
 
-  _bindEvents() {
-    const cv = this.canvas;
-    const self = this;
-    
-    const getPoint = (e) => {
-      const rect = cv.getBoundingClientRect();
-      const sx = cv.width / rect.width;
-      const sy = cv.height / rect.height;
-      let x, y;
-      if (e.touches) {
-        x = e.touches[0].clientX;
-        y = e.touches[0].clientY;
-      } else {
-        x = e.clientX;
-        y = e.clientY;
-      }
-      return {
-        x: Math.max(0, Math.min((x - rect.left) * sx, cv.width)),
-        y: Math.max(0, Math.min((y - rect.top) * sy, cv.height))
-      };
-    };
-    
-    cv.onmousedown = cv.ontouchstart = (e) => {
-      e.preventDefault();
-      if (!this._ensureSize()) return;
-      const ctx = cv.getContext('2d');
-      ctx.strokeStyle = '#1a1a1a';
-      ctx.lineWidth = 2;
-      ctx.lineCap = 'round';
-      this.drawing = true;
-      const p = getPoint(e);
-      ctx.beginPath();
-      ctx.moveTo(p.x, p.y);
-    };
-    
-    cv.onmousemove = cv.ontouchmove = (e) => {
-      if (!this.drawing) return;
-      e.preventDefault();
-      const ctx = cv.getContext('2d');
-      const p = getPoint(e);
-      ctx.lineTo(p.x, p.y);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(p.x, p.y);
-    };
-    
-    cv.onmouseup = cv.onmouseleave = cv.ontouchend = () => {
-      this.drawing = false;
-    };
-  },
+    resize() {
+        const parent = this.canvas.parentElement;
+        if (!parent) return;
+        const width = parent.clientWidth;
+        const height = 140;
+        if (this.canvas.width !== width) {
+            this.canvas.width = width;
+            this.canvas.height = height;
+            this.clear(); // limpa ao redimensionar
+        }
+    },
 
-  _ensureSize() {
-    const cv = this.canvas;
-    if (!cv) return false;
-    const parent = cv.parentElement;
-    if (!parent || parent.offsetWidth === 0) return false;
-    const newWidth = parent.offsetWidth;
-    const newHeight = 140;
-    if (cv.width !== newWidth || cv.height !== newHeight) {
-      cv.width = newWidth;
-      cv.height = newHeight;
-      this.clear();
-    }
-    return true;
-  },
+    bindEvents() {
+        const getPoint = (e) => {
+            const rect = this.canvas.getBoundingClientRect();
+            const scaleX = this.canvas.width / rect.width;
+            const scaleY = this.canvas.height / rect.height;
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            let x = (clientX - rect.left) * scaleX;
+            let y = (clientY - rect.top) * scaleY;
+            x = Math.max(0, Math.min(x, this.canvas.width));
+            y = Math.max(0, Math.min(y, this.canvas.height));
+            return { x, y };
+        };
 
-  clear() {
-    if (!this._ensureSize()) return;
-    const ctx = this.canvas.getContext('2d');
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    window.Utils.setVal('assinaturaOrcData', '');
-  },
+        const start = (e) => {
+            e.preventDefault();
+            this.drawing = true;
+            const p = getPoint(e);
+            this.ctx.beginPath();
+            this.ctx.moveTo(p.x, p.y);
+        };
 
-  save() {
-    if (!this._ensureSize()) {
-      showToast('Canvas não disponível', true);
-      return;
-    }
-    window.Utils.setVal('assinaturaOrcData', this.canvas.toDataURL('image/png'));
-    showToast('Assinatura salva');
-  },
+        const draw = (e) => {
+            if (!this.drawing) return;
+            e.preventDefault();
+            const p = getPoint(e);
+            this.ctx.lineTo(p.x, p.y);
+            this.ctx.stroke();
+            this.ctx.beginPath();
+            this.ctx.moveTo(p.x, p.y);
+        };
 
-  loadFrom(url) {
-    if (!url) return;
-    const self = this;
-    let tries = 0;
-    const attempt = () => {
-      if (self._ensureSize()) {
-        const cv = self.canvas;
-        const ctx = cv.getContext('2d');
+        const end = () => {
+            this.drawing = false;
+        };
+
+        this.canvas.addEventListener('mousedown', start);
+        this.canvas.addEventListener('mousemove', draw);
+        this.canvas.addEventListener('mouseup', end);
+        this.canvas.addEventListener('mouseleave', end);
+        this.canvas.addEventListener('touchstart', start);
+        this.canvas.addEventListener('touchmove', draw);
+        this.canvas.addEventListener('touchend', end);
+    },
+
+    clear() {
+        if (!this.ctx) return;
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillStyle = '#fff';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.strokeStyle = '#000';
+        this.ctx.lineWidth = 2;
+        this.ctx.lineCap = 'round';
+        document.getElementById('assinaturaOrcData').value = '';
+    },
+
+    save() {
+        if (!this.canvas) return;
+        const dataURL = this.canvas.toDataURL('image/png');
+        document.getElementById('assinaturaOrcData').value = dataURL;
+        showToast('Assinatura salva!');
+    },
+
+    loadFrom(url) {
+        if (!url) return;
         const img = new Image();
         img.onload = () => {
-          ctx.clearRect(0, 0, cv.width, cv.height);
-          ctx.drawImage(img, 0, 0, cv.width, cv.height);
-          window.Utils.setVal('assinaturaOrcData', url);
+            this.resize();
+            this.ctx.drawImage(img, 0, 0, this.canvas.width, this.canvas.height);
+            document.getElementById('assinaturaOrcData').value = url;
         };
         img.src = url;
-      } else if (tries < 10) {
-        tries++;
-        setTimeout(attempt, 200);
-      }
-    };
+    }
+};
     attempt();
   }
 };
