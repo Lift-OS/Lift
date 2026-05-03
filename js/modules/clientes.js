@@ -55,7 +55,10 @@ window.ClientesModule = {
     let totalEquipamentos = 0;
     const clientesComOS = new Set();
     let totalOS = 0, osAbertas = 0, osAprovadas = 0;
-    window.State.clients.forEach(c => { const eq = Array.isArray(c.equipamentos) ? c.equipamentos : []; totalEquipamentos += eq.length; });
+    window.State.clients.forEach(c => {
+      const eq = Array.isArray(c.equipamentos) ? c.equipamentos : [];
+      totalEquipamentos += eq.length;
+    });
     window.State.osHistory.forEach(os => {
       if (os.cliente) { clientesComOS.add(os.cliente); totalOS++; }
       if (['abertura','execucao','finalizacao'].includes(os.status)) osAbertas++;
@@ -80,7 +83,10 @@ window.ClientesModule = {
     const tbody = document.getElementById('cad_tableBody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    if (!list.length) { tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-[var(--muted)]">Nenhum cliente cadastrado</td></tr>'; return; }
+    if (!list.length) {
+      tbody.innerHTML = '</td><td colspan="4" class="text-center p-4 text-[var(--muted)]">Nenhum cliente cadastrado</td></td>';
+      return;
+    }
     const podeEditar = window.Auth.can('clientes_editar');
     const podeExcluir = window.Auth.can('clientes_excluir');
     list.forEach(cliente => {
@@ -90,13 +96,21 @@ window.ClientesModule = {
       if (podeEditar) acoes += ` <i class="fas fa-edit text-blue-400 cursor-pointer ml-2" onclick="ClientesModule.edit(${cliente.id})"></i>`;
       if (podeExcluir) acoes += ` <i class="fas fa-trash text-red-400 cursor-pointer ml-2" onclick="ClientesModule.delete(${cliente.id})"></i>`;
       const row = tbody.insertRow();
-      row.innerHTML = `<td class="p-2 font-medium">${window.esc(cliente.nome)}</td><td class="p-2">${window.esc(cliente.cidade || '-')}</td><td class="p-2">${window.esc(marcas || '-')}</td><td class="p-2">${acoes}</td>`;
+      row.innerHTML = `
+        <td class="p-2 font-medium">${window.esc(cliente.nome)}</td>
+        <td class="p-2">${window.esc(cliente.cidade || '-')}</td>
+        <td class="p-2">${window.esc(marcas || '-')}</td>
+        <td class="p-2">${acoes}</td>
+      `;
     });
   },
 
   filtrarClientes(busca) {
     if (!busca) { this.renderTable(); return; }
-    const filtered = window.State.clients.filter(c => (c.nome && c.nome.toLowerCase().includes(busca.toLowerCase())) || (c.cidade && c.cidade.toLowerCase().includes(busca.toLowerCase())));
+    const filtered = window.State.clients.filter(c =>
+      (c.nome && c.nome.toLowerCase().includes(busca.toLowerCase())) ||
+      (c.cidade && c.cidade.toLowerCase().includes(busca.toLowerCase()))
+    );
     this.renderTable(filtered);
   },
 
@@ -209,18 +223,18 @@ window.ClientesModule = {
     else this._finalizarAbrirOrcamento(cliente, null);
   },
 
-_finalizarAbrirOrcamento(cliente, equip) {
-  window.Utils.setVal('orc_cliente', cliente.nome);
-  window.Utils.setVal('orc_equipamento', '');
-  window.Utils.setVal('orc_serie_combustivel', '');
-  if (equip) {
-    const marcaModelo = `${equip.marca || ''} ${equip.modelo || ''}`.trim();
-    window.Utils.setVal('orc_equipamento', marcaModelo);
-    const serieComb = `Série: ${equip.serie || 'N/A'} | Combustível: ${equip.combustivel || 'N/A'}`;
-    window.Utils.setVal('orc_serie_combustivel', serieComb);
-  }
-  showToast(`Cliente ${cliente.nome} carregado no orçamento`);
-}
+  _finalizarAbrirOrcamento(cliente, equip) {
+    window.Utils.setVal('orc_cliente', cliente.nome);
+    window.Utils.setVal('orc_equipamento', '');
+    window.Utils.setVal('orc_serie_combustivel', '');
+    if (equip) {
+      const marcaModelo = `${equip.marca || ''} ${equip.modelo || ''}`.trim();
+      window.Utils.setVal('orc_equipamento', marcaModelo);
+      const serieComb = `Série: ${equip.serie || 'N/A'} | Combustível: ${equip.combustivel || 'N/A'}`;
+      window.Utils.setVal('orc_serie_combustivel', serieComb);
+    }
+    showToast(`Cliente ${cliente.nome} carregado no orçamento`);
+  },
 
   tryRestaurarDados() {
     const dados = sessionStorage.getItem('clienteSelecionado');
@@ -268,9 +282,15 @@ _finalizarAbrirOrcamento(cliente, equip) {
   },
 
   async save() {
-    if (!window.Auth.can('clientes_cadastrar')) { showToast('Apenas administrador pode cadastrar clientes', true); return; }
+    if (!window.Auth.can('clientes_cadastrar')) {
+      showToast('Apenas administrador pode cadastrar clientes', true);
+      return;
+    }
     const nome = document.getElementById('cad_nome')?.value.trim();
-    if (!nome) { showToast('Nome do cliente é obrigatório', true); return; }
+    if (!nome) {
+      showToast('Nome do cliente é obrigatório', true);
+      return;
+    }
     const equipamentos = [];
     const equipItems = document.querySelectorAll('#equipamentosList .equip-item');
     equipItems.forEach(item => {
@@ -315,11 +335,16 @@ _finalizarAbrirOrcamento(cliente, equip) {
     this.clearForm();
     this.renderTable();
     this.updateStats();
-    if (window.GoogleSheets && window.Auth.can('sincronizar')) await window.GoogleSheets.syncSingleCliente(cliente);
+    if (window.GoogleSheets && window.Auth.can('sincronizar')) {
+      await window.GoogleSheets.syncSingleCliente(cliente);
+    }
   },
 
   edit(id) {
-    if (!window.Auth.can('clientes_editar')) { showToast('Apenas administrador pode editar', true); return; }
+    if (!window.Auth.can('clientes_editar')) {
+      showToast('Apenas administrador pode editar', true);
+      return;
+    }
     const cliente = window.State.clients.find(c => c.id === id);
     if (!cliente) return;
     this.normalizarEquipamentos(cliente);
@@ -342,7 +367,10 @@ _finalizarAbrirOrcamento(cliente, equip) {
   },
 
   delete(id) {
-    if (!window.Auth.can('clientes_excluir')) { showToast('Apenas administrador pode excluir', true); return; }
+    if (!window.Auth.can('clientes_excluir')) {
+      showToast('Apenas administrador pode excluir', true);
+      return;
+    }
     if (!confirm('Excluir este cliente permanentemente?')) return;
     window.State.clients = window.State.clients.filter(c => c.id !== id);
     window.Storage.saveClients();
@@ -351,11 +379,20 @@ _finalizarAbrirOrcamento(cliente, equip) {
     showToast('Cliente excluído');
   },
 
-  cancelEdit() { this.editingId = null; this.clearForm(); document.getElementById('cad_btnCancelar').style.display = 'none'; },
+  cancelEdit() {
+    this.editingId = null;
+    this.clearForm();
+    document.getElementById('cad_btnCancelar').style.display = 'none';
+  },
+
   clearForm() {
     const fields = ['cad_nome','cad_cnpj','cad_endereco','cad_cidade','cad_telefone','cad_whatsapp','cad_email','cad_responsavel_nome','cad_responsavel_telefone'];
-    fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    const container = document.getElementById('equipamentosList'); if (container) container.innerHTML = '';
+    fields.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const container = document.getElementById('equipamentosList');
+    if (container) container.innerHTML = '';
   },
 
   adicionarCampoEquipamento(marca, modelo, serie, qtd, combustivel) {
@@ -397,11 +434,80 @@ _finalizarAbrirOrcamento(cliente, equip) {
     `;
     const marcaSelect = div.querySelector('.equip-marca');
     const outraDiv = div.querySelector('.outra-marca-container');
-    marcaSelect.onchange = () => { outraDiv.style.display = marcaSelect.value === 'OUTRA' ? 'block' : 'none'; };
+    marcaSelect.onchange = () => {
+      outraDiv.style.display = marcaSelect.value === 'OUTRA' ? 'block' : 'none';
+    };
     container.appendChild(div);
   },
 
-  exportCSV() { /* manter implementação original */ },
-  importCSV() { /* manter implementação original */ },
-  loadFromSync(clientes) { if (Array.isArray(clientes) && clientes.length) { clientes.forEach(c => this.normalizarEquipamentos(c)); window.State.clients = clientes; window.Storage.saveClients(); this.renderTable(); this.updateStats(); } }
+  exportCSV() {
+    if (!window.Auth.can('clientes_exportar_csv')) {
+      showToast('Apenas administrador pode exportar', true);
+      return;
+    }
+    let csv = "Nome,CNPJ,Endereco,Cidade,Telefone,WhatsApp,E-mail,Responsavel,TelResp,Marcas\n";
+    window.State.clients.forEach(c => {
+      const equipArray = Array.isArray(c.equipamentos) ? c.equipamentos : [];
+      const marcas = equipArray.map(e => e.marca).join(';');
+      csv += `"${c.nome || ''}",${c.cnpj || ''},"${c.endereco || ''}","${c.cidade || ''}",${c.telefone || ''},${c.whatsapp || ''},${c.email || ''},"${c.responsavel_nome || ''}",${c.responsavel_telefone || ''},"${marcas}"\n`;
+    });
+    const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `clientes_${window.Utils.dataHojeISO()}.csv`;
+    link.click();
+    showToast('Clientes exportados');
+  },
+
+  importCSV() {
+    if (!window.Auth.can('clientes_importar_csv')) {
+      showToast('Apenas administrador pode importar', true);
+      return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const lines = ev.target.result.split('\n');
+        for (let i = 1; i < lines.length; i++) {
+          if (!lines[i].trim()) continue;
+          const cols = window.Utils.parseCSVLine(lines[i]);
+          if (cols[0]) {
+            window.State.clients.push({
+              id: Date.now() + i,
+              nome: cols[0]?.trim() || '',
+              cnpj: cols[1] || '',
+              endereco: cols[2] || '',
+              cidade: cols[3] || '',
+              telefone: cols[4] || '',
+              whatsapp: cols[5] || '',
+              email: cols[6] || '',
+              responsavel_nome: cols[7] || '',
+              responsavel_telefone: cols[8] || '',
+              equipamentos: []
+            });
+          }
+        }
+        window.Storage.saveClients();
+        this.renderTable();
+        this.updateStats();
+        showToast('Clientes importados');
+      };
+      reader.readAsText(file, 'UTF-8');
+    };
+    input.click();
+  },
+
+  loadFromSync(clientes) {
+    if (Array.isArray(clientes) && clientes.length) {
+      clientes.forEach(c => this.normalizarEquipamentos(c));
+      window.State.clients = clientes;
+      window.Storage.saveClients();
+      this.renderTable();
+      this.updateStats();
+    }
+  }
 };
