@@ -7,9 +7,7 @@ window.PageLoader = {
     if (!skipEvent) {
       document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.classList.remove('active');
-        if (btn.getAttribute('data-page') === pageName) {
-          btn.classList.add('active');
-        }
+        if (btn.getAttribute('data-page') === pageName) btn.classList.add('active');
       });
     }
     this.currentPage = pageName;
@@ -32,80 +30,50 @@ window.PageLoader = {
           <i class="fas fa-exclamation-triangle text-4xl mb-3"></i>
           <p>Erro ao carregar página: ${pageName}</p>
           <button onclick="PageLoader.load('os')" class="btn btn-primary mt-4">Voltar para OS</button>
-        </div>
-      `;
+        </div>`;
     }
   },
 
   initPage(pageName) {
-    // Remove qualquer modal residual de clientes
-    const modalCliente = document.getElementById('modalEscolhaCliente');
-    if (modalCliente) modalCliente.remove();
-    const modalEquip = document.getElementById('modalEquipamentosCliente');
-    if (modalEquip) modalEquip.remove();
+    // Remove modais residuais
+    const modalCliente = document.getElementById('modalEscolhaCliente'); if (modalCliente) modalCliente.remove();
+    const modalEquip = document.getElementById('modalEquipamentosCliente'); if (modalEquip) modalEquip.remove();
 
     // Inicializa o módulo correspondente
     switch (pageName) {
-      case 'os':
-        if (window.OSModule) window.OSModule.init();
-        break;
-      case 'orcamento':
-        if (window.OrcamentoModule) window.OrcamentoModule.init();
-        break;
-      case 'estoque':
-        if (window.EstoqueModule) window.EstoqueModule.init();
-        break;
-      case 'clientes':
-        if (window.ClientesModule) window.ClientesModule.init();
-        break;
-      case 'historico':
-        if (window.HistoricoModule) window.HistoricoModule.init();
-        break;
-      case 'checklist':
-        if (window.ChecklistModule) window.ChecklistModule.init();
-        break;
-      case 'agendamentos':
-        if (window.AgendamentosModule) window.AgendamentosModule.init();
-        break;
-      case 'jornada':
-        if (window.JornadaModule) window.JornadaModule.init();
-        break;
-      case 'permissoes':
-        if (window.PermissoesModule) window.PermissoesModule.init();
-        break;
-      case 'usuarios':
-        if (window.UserManager) window.UserManager.init();
-        break;
+      case 'os': if (window.OSModule) window.OSModule.init(); break;
+      case 'orcamento': if (window.OrcamentoModule) window.OrcamentoModule.init(); break;
+      case 'estoque': if (window.EstoqueModule) window.EstoqueModule.init(); break;
+      case 'clientes': if (window.ClientesModule) window.ClientesModule.init(); break;
+      case 'historico': if (window.HistoricoModule) window.HistoricoModule.init(); break;
+      case 'checklist': if (window.ChecklistModule) window.ChecklistModule.init(); break;
+      case 'agendamentos': if (window.AgendamentosModule) window.AgendamentosModule.init(); break;
+      case 'jornada': if (window.JornadaModule) window.JornadaModule.init(); break;
+      case 'permissoes': if (window.PermissoesModule) window.PermissoesModule.init(); break;
+      case 'usuarios': if (window.UserManager) window.UserManager.init(); break;
     }
 
-    // Restaura dados do cliente (apenas para as páginas OS e Orçamento)
+    // Restaura dados do cliente APENAS uma vez por página (OS ou Orçamento)
     if ((pageName === 'os' || pageName === 'orcamento') && window.ClientesModule && window.ClientesModule.tryRestaurarDados) {
-      window.ClientesModule.tryRestaurarDados();
+      const restoredKey = `restaurado_${pageName}`;
+      if (!sessionStorage.getItem(restoredKey)) {
+        window.ClientesModule.tryRestaurarDados();
+        sessionStorage.setItem(restoredKey, 'true');
+      }
     }
   }
 };
 
 // Estado global
 window.State = {
-  osCounter: 0,
-  orcCounter: 0,
-  osHistory: [],
-  clients: [],
-  pecas: [],
-  movimentosEstoque: [],
-  orcamentos: [],
-  agendamentos: [],
-  hasUnsavedChanges: false
+  osCounter: 0, orcCounter: 0, osHistory: [], clients: [], pecas: [],
+  movimentosEstoque: [], orcamentos: [], agendamentos: [], hasUnsavedChanges: false
 };
 
 // Storage helper
 window.Storage = {
-  save(key, value) {
-    try { localStorage.setItem(`LiftOS_${key}`, JSON.stringify(value)); } catch(e) {}
-  },
-  load(key) {
-    try { const data = localStorage.getItem(`LiftOS_${key}`); return data ? JSON.parse(data) : null; } catch(e) { return null; }
-  },
+  save(key, value) { try { localStorage.setItem(`LiftOS_${key}`, JSON.stringify(value)); } catch(e) {} },
+  load(key) { try { const data = localStorage.getItem(`LiftOS_${key}`); return data ? JSON.parse(data) : null; } catch(e) { return null; } },
   saveCounter() { this.save('os_counter', window.State.osCounter); },
   loadCounter() { window.State.osCounter = this.load('os_counter') || 0; },
   saveOrcCounter() { this.save('orc_counter', window.State.orcCounter); },
@@ -138,13 +106,8 @@ window.App = {
     window.Storage.loadOrcamentos();
     window.Storage.loadAgendamentos();
     await window.PageLoader.load('os');
-    if (window.Auth.can('sincronizar') && navigator.onLine) {
-      setTimeout(() => window.GoogleSheets.fetchFromSheet(), 1500);
-    }
-    window.addEventListener('online', () => {
-      showToast('Conexão restaurada');
-      if (window.Auth.can('sincronizar')) window.GoogleSheets.fetchFromSheet();
-    });
+    if (window.Auth.can('sincronizar') && navigator.onLine) setTimeout(() => window.GoogleSheets.fetchFromSheet(), 1500);
+    window.addEventListener('online', () => { showToast('Conexão restaurada'); if (window.Auth.can('sincronizar')) window.GoogleSheets.fetchFromSheet(); });
     window.addEventListener('offline', () => showToast('Sem conexão', true));
   }
 };
