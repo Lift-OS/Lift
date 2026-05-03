@@ -1,4 +1,4 @@
-// modules/os.js - Módulo de Ordem de Serviço
+// modules/os.js - Módulo de Ordem de Serviço (com Timer e Assinaturas)
 window.OSModule = {
   state: {
     currentStatus: 'abertura',
@@ -16,12 +16,150 @@ window.OSModule = {
     maxFotos: 10
   },
 
+  // Timer interno (para não depender de global)
+  timer: {
+    interval: null,
+    running: false,
+    paused: false,
+    startRealTime: 0,
+    pausedAccum: 0,
+    displayElem: null,
+
+    init() {
+      this.displayElem = document.getElementById('timerDisplay');
+      this.restore();
+    },
+
+    start() {
+      if (this.running && !this.paused) return;
+      if (this.paused) {
+        // retoma de pausa
+        this.paused = false;
+        this.running = true;
+        this.startRealTime = Date.now();
+        if (!window.Utils.getVal('horaAlmocoRetorno')) {
+          window.Utils.setVal('horaAlmocoRetorno', new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+        }
+      } else {
+        this.running = true;
+        this.paused = false;
+        this.pausedAccum = 0;
+        this.startRealTime = Date.now();
+        if (!window.Utils.getVal('horaInicio')) {
+          window.Utils.setVal('horaInicio', new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+        }
+      }
+      this._startInterval();
+      this._saveState();
+    },
+
+    pause() {
+      if (!this.running || this.paused) return;
+      this.paused = true;
+      this.pausedAccum += (Date.now() - this.startRealTime);
+      if (!window.Utils.getVal('horaAlmocoSaida')) {
+        window.Utils.setVal('horaAlmocoSaida', new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+      }
+      this._clearInterval();
+      this._saveState();
+    },
+
+    stop() {
+      if (!this.running) return;
+      if (!this.paused) {
+        this.pausedAccum += (Date.now() - this.startRealTime);
+      }
+      this._clearInterval();
+      this.running = false;
+      this.paused = false;
+      if (!window.Utils.getVal('horaTermino')) {
+        window.Utils.setVal('horaTermino', new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+      }
+      if (window.HorasModule) window.HorasModule.calcular();
+      this._clearState();
+      this.updateDisplay(); // mostra 00:00:00
+    },
+
+    reset() {
+      this._clearInterval();
+      this.running = false;
+      this.paused = false;
+      this.pausedAccum = 0;
+      this.startRealTime = 0;
+      this.updateDisplay();
+      this._clearState();
+    },
+
+    getElapsedSeconds() {
+      let total = this.pausedAccum;
+      if (this.running && !this.paused) {
+        total += (Date.now() - this.startRealTime);
+      }
+      return Math.floor(total / 1000);
+    },
+
+    updateDisplay() {
+      if (!this.displayElem) return;
+      const secs = this.getElapsedSeconds();
+      const h = Math.floor(secs / 3600);
+      const m = Math.floor((secs % 3600) / 60);
+      const s = secs % 60;
+      this.displayElem.textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    },
+
+    _startInterval() {
+      if (this.interval) clearInterval(this.interval);
+      this.interval = setInterval(() => this.updateDisplay(), 1000);
+    },
+
+    _clearInterval() {
+      if (this.interval) {
+        clearInterval(this.interval);
+        this.interval = null;
+      }
+    },
+
+    _saveState() {
+      if (this.running && !this.paused) {
+        localStorage.setItem('LiftOS_timer_state', JSON.stringify({
+          running: true,
+          paused: false,
+          pausedAccum: this.pausedAccum,
+          startReal: this.startRealTime
+        }));
+      }
+    },
+
+    _clearState() {
+      localStorage.removeItem('LiftOS_timer_state');
+    },
+
+    restore() {
+      try {
+        const saved = JSON.parse(localStorage.getItem('LiftOS_timer_state'));
+        if (saved && saved.running && !saved.paused) {
+          this.pausedAccum = saved.pausedAccum || 0;
+          this.startRealTime = saved.startReal || Date.now();
+          this.running = true;
+          this.paused = false;
+          this._startInterval();
+          this.updateDisplay();
+        }
+      } catch(e) {}
+    }
+  },
+
   init() {
     this.loadEventListeners();
     this.populateMarcas();
     this.setDefaultDate();
     this.updateUI();
-    if (window.Timer) window.Timer.restore();
+    // Inicializa o timer
+    this.timer.init();
+    // Inicializa assinaturas (se o módulo global existir)
+    if (window.Signature) window.Signature.init();
+    // Recupera o checklist se existir
+    if (window.ChecklistModule) window.ChecklistModule.init();
   },
 
   loadEventListeners() {
@@ -46,6 +184,14 @@ window.OSModule = {
 
     const btnNovaOS = document.getElementById('btnNovaOS');
     if (btnNovaOS) btnNovaOS.onclick = () => this.novaOS();
+
+    // Botões do timer (caso existam no HTML)
+    const btnTimerStart = document.getElementById('timerStart');
+    if (btnTimerStart) btnTimerStart.onclick = () => this.timer.start();
+    const btnTimerPause = document.getElementById('timerPause');
+    if (btnTimerPause) btnTimerPause.onclick = () => this.timer.pause();
+    const btnTimerStop = document.getElementById('timerStop');
+    if (btnTimerStop) btnTimerStop.onclick = () => this.timer.stop();
 
     // Marca select
     const marcaSelect = document.getElementById('marcaSelect');
@@ -75,7 +221,7 @@ window.OSModule = {
     const fotosPendencias = document.getElementById('fotosPendenciasInput');
     if (fotosPendencias) fotosPendencias.onchange = (e) => this.handleFotosPendencias(e);
 
-    // Horas
+    // Horas (se existir módulo)
     if (window.HorasModule) window.HorasModule.init();
   },
 
@@ -174,6 +320,10 @@ window.OSModule = {
       window.HorasModule.calcular();
       dados.horasTotais = window.Utils.getVal('horasTotais');
       dados.totalGeral = window.Utils.getVal('totalGeral');
+    } else {
+      // fallback caso HorasModule não exista
+      dados.horasTotais = window.Utils.getVal('horasTotais') || '0h';
+      dados.totalGeral = window.Utils.getVal('totalGeral') || '00:00';
     }
 
     if (!dados.numeroOS) {
@@ -233,7 +383,6 @@ window.OSModule = {
 
     const statusAtual = this.state.currentStatus;
 
-    // Validações
     if (novoStatus === 'execucao' && statusAtual !== 'abertura') {
       showToast('Precisa estar em ABERTURA', true);
       return;
@@ -279,7 +428,7 @@ window.OSModule = {
   iniciarExecucao() {
     if (this.state.currentStatus !== 'abertura') return;
     this.mudarStatus('execucao');
-    if (window.Timer) window.Timer.start();
+    this.timer.start();
     showToast('Execução iniciada');
   },
 
@@ -290,7 +439,7 @@ window.OSModule = {
       showToast('Horímetro inválido (ex: 1250h)', true);
       return;
     }
-    if (window.Timer) window.Timer.stop();
+    this.timer.stop();
     if (window.HorasModule) window.HorasModule.calcular();
     this.mudarStatus('finalizacao');
   },
@@ -316,14 +465,12 @@ window.OSModule = {
       return;
     }
 
-    // Reset state
     this.state.currentStatus = 'abertura';
     this.state.fotosServico = [];
     this.state.fotoHorimetro = null;
     this.state.fotosPendencias = [];
     this.state.hasUnsavedChanges = false;
 
-    // Limpar campos
     const inputs = document.querySelectorAll('#tab-os input, #tab-os select, #tab-os textarea');
     inputs.forEach(el => {
       if (el.id && el.type !== 'file') {
@@ -335,7 +482,6 @@ window.OSModule = {
       }
     });
 
-    // Limpar previews
     const fps = document.getElementById('fotosPreview');
     if (fps) fps.innerHTML = '';
     const fhp = document.getElementById('fotoHorimetroPreview');
@@ -343,23 +489,18 @@ window.OSModule = {
     const fpp = document.getElementById('fotosPendenciasPreview');
     if (fpp) fpp.innerHTML = '';
 
-    // Reset assinaturas
-    if (window.SignatureModule) {
-      window.SignatureModule.clear('tec');
-      window.SignatureModule.clear('cli');
+    if (window.Signature) {
+      window.Signature.clear('tec');
+      window.Signature.clear('cli');
     }
 
-    // Reset timer
-    if (window.Timer) window.Timer.reset();
+    this.timer.reset();
 
-    // Gerar número
     const osNum = window.Utils.generateOSNumber();
     document.getElementById('numeroOS').value = osNum;
 
-    // Reset checklist
     if (window.ChecklistModule) window.ChecklistModule.reset();
 
-    // Esconder badge de orçamento
     const orcBadge = document.getElementById('orcVinculadoBadge');
     if (orcBadge) orcBadge.style.display = 'none';
 
@@ -368,10 +509,8 @@ window.OSModule = {
   },
 
   carregarOS(dados) {
-    // Carrega dados de uma OS existente
     this.state.currentStatus = dados.status || 'abertura';
 
-    // Preenche campos
     for (const [key, value] of Object.entries(dados)) {
       if (key !== 'fotosBase64' && key !== 'fotoHorimetro' && key !== 'fotosPendencias' &&
           key !== 'assinaturaTecnico' && key !== 'assinaturaCliente' && key !== 'checklistData') {
@@ -379,21 +518,19 @@ window.OSModule = {
       }
     }
 
-    // Fotos
     this.state.fotoHorimetro = dados.fotoHorimetro || null;
     this.state.fotosServico = dados.fotosBase64 || [];
     this.state.fotosPendencias = dados.fotosPendencias || [];
 
     this.renderFotos();
-    if (window.SignatureModule) {
-      window.SignatureModule.loadFromData('tec', dados.assinaturaTecnico);
-      window.SignatureModule.loadFromData('cli', dados.assinaturaCliente);
+    if (window.Signature) {
+      window.Signature.loadFromData('tec', dados.assinaturaTecnico);
+      window.Signature.loadFromData('cli', dados.assinaturaCliente);
     }
     if (window.ChecklistModule && dados.checklistData) {
       window.ChecklistModule.loadData(dados.checklistData);
     }
 
-    // Orçamento vinculado
     const orcBadge = document.getElementById('orcVinculadoBadge');
     const orcNum = document.getElementById('orcVinculadoNum');
     if (orcBadge && orcNum) {
@@ -410,7 +547,6 @@ window.OSModule = {
   },
 
   renderFotos() {
-    // Foto Horímetro
     const fhPreview = document.getElementById('fotoHorimetroPreview');
     if (fhPreview) {
       fhPreview.innerHTML = '';
@@ -419,7 +555,6 @@ window.OSModule = {
       }
     }
 
-    // Fotos Serviço
     const fsPreview = document.getElementById('fotosPreview');
     if (fsPreview) {
       fsPreview.innerHTML = '';
@@ -428,7 +563,6 @@ window.OSModule = {
       });
     }
 
-    // Fotos Pendências
     const fpPreview = document.getElementById('fotosPendenciasPreview');
     if (fpPreview) {
       fpPreview.innerHTML = '';
@@ -499,10 +633,10 @@ window.OSModule = {
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const maxWidth = 800;
-          const maxHeight = 600;
           let width = img.width;
           let height = img.height;
+          const maxWidth = 800;
+          const maxHeight = 600;
           if (width > height) {
             if (width > maxWidth) {
               height = (height * maxWidth) / width;
@@ -559,7 +693,6 @@ window.OSModule = {
     }
   },
 
-  // Geração de PDF
   gerarRelatorioHTML() {
     const cliente = window.Utils.getVal('cliente');
     const endereco = window.Utils.getVal('endereco');
