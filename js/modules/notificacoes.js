@@ -8,6 +8,13 @@ window.Notificacoes = {
     this.render();
     this.requestPermission();
     setInterval(() => this.verificarNovosAgendamentos(), 60000);
+    // Abrir/fechar dropdown
+    const bell = document.getElementById('notifBell');
+    if (bell) bell.onclick = (e) => { e.stopPropagation(); this.toggleDropdown(); };
+    document.addEventListener('click', (e) => {
+      const widget = document.getElementById('notifWidget');
+      if (widget && !widget.contains(e.target)) this.closeDropdown();
+    });
   },
 
   requestPermission() {
@@ -74,19 +81,21 @@ window.Notificacoes = {
     const badge = document.getElementById('notifBadge');
     if (badge) {
       badge.innerText = this._unread > 99 ? '99+' : this._unread;
-      badge.style.display = this._unread ? 'inline-flex' : 'none';
+      badge.style.display = this._unread ? 'flex' : 'none';
     }
     const listDiv = document.getElementById('notifList');
     if (!listDiv) return;
     if (!this._list.length) {
-      listDiv.innerHTML = '<div class="notif-empty">Nenhuma notificação</div>';
+      listDiv.innerHTML = '<div class="notif-empty"><i class="fas fa-bell-slash"></i> Nenhuma notificação</div>';
       return;
     }
     let html = '';
     this._list.slice(0, 30).forEach(n => {
       html += `
         <div class="notif-item ${n.lida ? 'read' : 'unread'}" onclick="Notificacoes.marcarLida(${n.id})">
-          <div class="notif-icon"><i class="fas fa-bell"></i></div>
+          <div class="notif-icon ${n.tipo === 'agendamento' ? 'agenda-icon' : 'os-icon'}">
+            <i class="fas ${n.tipo === 'agendamento' ? 'fa-calendar-alt' : 'fa-file-alt'}"></i>
+          </div>
           <div class="notif-body">
             <div class="notif-title">${window.esc(n.titulo)}</div>
             <div class="notif-desc">${window.esc(n.descricao)}</div>
@@ -126,5 +135,10 @@ window.Notificacoes = {
   toggleDropdown() {
     const dd = document.getElementById('notifDropdown');
     if (dd) dd.classList.toggle('open');
+  },
+
+  closeDropdown() {
+    const dd = document.getElementById('notifDropdown');
+    if (dd) dd.classList.remove('open');
   }
 };
