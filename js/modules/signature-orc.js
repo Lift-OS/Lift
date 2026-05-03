@@ -1,4 +1,4 @@
-// modules/signature-orc.js - Assinatura digital para Orçamento
+// modules/signature-orc.js - Assinatura para Orçamento
 window.SignatureOrc = {
   canvas: null,
   ctx: null,
@@ -45,7 +45,6 @@ window.SignatureOrc = {
       y = Math.max(0, Math.min(y, this.canvas.height));
       return { x, y };
     };
-
     const start = (e) => {
       e.preventDefault();
       this.drawing = true;
@@ -53,7 +52,6 @@ window.SignatureOrc = {
       this.ctx.beginPath();
       this.ctx.moveTo(p.x, p.y);
     };
-
     const draw = (e) => {
       if (!this.drawing) return;
       e.preventDefault();
@@ -63,11 +61,7 @@ window.SignatureOrc = {
       this.ctx.beginPath();
       this.ctx.moveTo(p.x, p.y);
     };
-
-    const end = () => {
-      this.drawing = false;
-    };
-
+    const end = () => { this.drawing = false; };
     this.canvas.addEventListener('mousedown', start);
     this.canvas.addEventListener('mousemove', draw);
     this.canvas.addEventListener('mouseup', end);
@@ -77,7 +71,7 @@ window.SignatureOrc = {
     this.canvas.addEventListener('touchend', end);
   },
 
-  clear() {
+  clear(silent = true) {
     if (!this.ctx) return;
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.ctx.fillStyle = '#fff';
@@ -86,7 +80,7 @@ window.SignatureOrc = {
     this.ctx.lineWidth = 2;
     this.ctx.lineCap = 'round';
     document.getElementById('assinaturaOrcData').value = '';
-    // Não exibe toast aqui (evita mensagens ao trocar de página)
+    if (!silent) showToast('Assinatura limpa');
   },
 
   save() {
