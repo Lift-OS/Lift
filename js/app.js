@@ -120,6 +120,16 @@ window.Storage = {
   loadMovimentos() { window.State.movimentosEstoque = this.load('movimentos') || []; },
   saveOrcamentos() { this.save('orcamentos', window.State.orcamentos); },
   loadOrcamentos() { window.State.orcamentos = this.load('orcamentos') || []; },
+  // Adicione dentro de window.Storage = { ... }
+saveJornada(login, jornada) {
+    const todas = this.load('jornadas') || {};
+    todas[login] = jornada;
+    this.save('jornadas', todas);
+},
+loadJornada(login) {
+    const todas = this.load('jornadas') || {};
+    return todas[login] || null;
+},
   saveAgendamentos() { this.save('agendamentos', window.State.agendamentos); },
   loadAgendamentos() { window.State.agendamentos = this.load('agendamentos') || []; }
 };
