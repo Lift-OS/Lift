@@ -1,12 +1,29 @@
-// modules/clientes.js - Módulo de Clientes (CORRIGIDO)
+// modules/clientes.js - Módulo de Clientes (com normalização de equipamentos)
 window.ClientesModule = {
   editingId: null,
 
+  // Converte equipamentos de string JSON para array, se necessário
+  normalizarEquipamentos(cliente) {
+    if (!cliente) return;
+    if (Array.isArray(cliente.equipamentos)) return;
+    if (typeof cliente.equipamentos === 'string' && cliente.equipamentos.trim() !== '') {
+      try {
+        const parsed = JSON.parse(cliente.equipamentos);
+        if (Array.isArray(parsed)) {
+          cliente.equipamentos = parsed;
+          return;
+        }
+      } catch (e) {
+        console.warn('Erro ao parsear equipamentos do cliente', cliente.nome, e);
+      }
+    }
+    // Se não for array válido, define como array vazio
+    cliente.equipamentos = [];
+  },
+
   init() {
-    // Garante que todos os clientes tenham equipamentos como array
-    window.State.clients.forEach(c => {
-      if (!Array.isArray(c.equipamentos)) c.equipamentos = [];
-    });
+    // Normaliza todos os clientes existentes (vindos de storage local)
+    window.State.clients.forEach(c => this.normalizarEquipamentos(c));
     this.renderTable();
     this.updateStats();
     this.loadEventListeners();
@@ -81,7 +98,7 @@ window.ClientesModule = {
     const podeExcluir = window.Auth.can('clientes_excluir');
 
     list.forEach(cliente => {
-      // Garantir que equipamentos é array
+      // Garantir que equipamentos é array (segurança extra)
       const equipArray = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
       const marcas = equipArray.map(e => e.marca).join(', ');
       
@@ -115,7 +132,8 @@ window.ClientesModule = {
     const cliente = window.State.clients.find(c => c.id === id);
     if (!cliente) return;
 
-    // Garante equipamentos como array
+    // Normaliza por segurança
+    this.normalizarEquipamentos(cliente);
     const equipamentos = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
     if (equipamentos.length) {
       this.mostrarModalEquipamentos(cliente);
@@ -259,6 +277,9 @@ window.ClientesModule = {
 
     const cliente = window.State.clients.find(c => c.id === id);
     if (!cliente) return;
+
+    // Normaliza equipamentos (caso venha como string)
+    this.normalizarEquipamentos(cliente);
 
     this.editingId = id;
     document.getElementById('cad_nome').value = cliente.nome || '';
@@ -413,7 +434,7 @@ window.ClientesModule = {
               email: cols[6] || '',
               responsavel_nome: cols[7] || '',
               responsavel_telefone: cols[8] || '',
-              equipamentos: []
+              equipamentos: []  // CSV não traz equipamentos estruturados
             });
           }
         }
@@ -429,10 +450,8 @@ window.ClientesModule = {
 
   loadFromSync(clientes) {
     if (Array.isArray(clientes) && clientes.length) {
-      // Normaliza os equipamentos para array
-      clientes.forEach(c => {
-        if (!Array.isArray(c.equipamentos)) c.equipamentos = [];
-      });
+      // Normaliza cada cliente (converte string JSON para array)
+      clientes.forEach(c => this.normalizarEquipamentos(c));
       window.State.clients = clientes;
       window.Storage.saveClients();
       this.renderTable();
