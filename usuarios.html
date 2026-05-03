@@ -1,0 +1,33 @@
+<!-- pages/usuarios.html -->
+<div id="tab-usuarios">
+  <div class="checklist-card p-4 md:p-5">
+    <h2 class="font-display text-xl mb-3"><i class="fas fa-users"></i> Gerenciar Usuários</h2>
+    
+    <div class="grid md:grid-cols-2 gap-4 mb-5">
+      <div><input type="text" id="userNome" placeholder="Nome" class="form-input"></div>
+      <div><input type="text" id="userLogin" placeholder="Login" class="form-input"></div>
+      <div><input type="password" id="userSenha" placeholder="Senha" class="form-input"></div>
+      <div>
+        <select id="userNivel" class="form-input">
+          <option value="admin">Administrador</option>
+          <option value="tecnico">Técnico</option>
+          <option value="visualizador">Visualizador</option>
+        </select>
+      </div>
+    </div>
+    
+    <div class="flex gap-3 mb-5 flex-wrap">
+      <button id="btnAdicionarUsuario" class="btn btn-primary"><i class="fas fa-user-plus"></i> Adicionar Usuário</button>
+      <button id="userCancelBtn" class="btn btn-secondary" style="display:none">Cancelar</button>
+    </div>
+    
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-[var(--bg-secondary)]">
+          <tr><th class="p-2 text-left">Nome</th><th class="p-2 text-left">Login</th><th class="p-2 text-left">Nível</th><th class="p-2 text-left">Ações</th></tr>
+        </thead>
+        <tbody id="userTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
