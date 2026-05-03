@@ -1,4 +1,4 @@
-// modules/agendamentos.js - Módulo de Agendamentos
+// modules/agendamentos.js - Módulo de Agendamentos (com notificações)
 window.AgendamentosModule = {
   init() {
     this.carregar();
@@ -30,7 +30,6 @@ window.AgendamentosModule = {
   atualizarSelectTecnicos() {
     const select = document.getElementById('ag_tecnico');
     if (!select) return;
-
     select.innerHTML = '<option value="">Selecione o técnico</option>';
     const users = window.Auth.getUsers();
     users.forEach(user => {
@@ -43,7 +42,6 @@ window.AgendamentosModule = {
   atualizarDatalistClientes() {
     const datalist = document.getElementById('clientesList');
     if (!datalist) return;
-
     datalist.innerHTML = '';
     window.State.clients.forEach(cliente => {
       const option = document.createElement('option');
@@ -55,15 +53,12 @@ window.AgendamentosModule = {
   carregarOSDisponiveis() {
     const select = document.getElementById('ag_os_select');
     if (!select) return;
-
     select.innerHTML = '<option value="">Selecione a OS</option>';
-
     const osDisponiveis = window.State.osHistory.filter(os => os.status === 'abertura');
     if (!osDisponiveis.length) {
       select.innerHTML += '<option value="">Nenhuma OS em abertura</option>';
       return;
     }
-
     osDisponiveis.forEach(os => {
       select.innerHTML += `<option value="${window.esc(os.numeroOS)}">${window.esc(os.numeroOS)} — ${window.esc(os.cliente).toUpperCase()}</option>`;
     });
@@ -72,15 +67,12 @@ window.AgendamentosModule = {
   carregarOSPorCliente(clienteNome) {
     const select = document.getElementById('ag_os_select');
     if (!select) return;
-
     select.innerHTML = '<option value="">Selecione a OS</option>';
-
     const osDisponiveis = window.State.osHistory.filter(os => os.status === 'abertura' && os.cliente === clienteNome);
     if (!osDisponiveis.length) {
       select.innerHTML += `<option value="">Nenhuma OS em abertura para ${window.esc(clienteNome)}</option>`;
       return;
     }
-
     osDisponiveis.forEach(os => {
       select.innerHTML += `<option value="${window.esc(os.numeroOS)}">${window.esc(os.numeroOS)} — ${window.esc(os.cliente).toUpperCase()}</option>`;
     });
@@ -88,14 +80,11 @@ window.AgendamentosModule = {
 
   verificarSobreposicao(tecnico, data, horario, editId) {
     if (!tecnico || !data || !horario) return false;
-
     const minutos = parseInt(horario.split(':')[0]) * 60 + parseInt(horario.split(':')[1] || '0');
-
     return window.State.agendamentos.some(ag => {
       if (ag.status === 'concluido') return false;
       if (editId && String(ag.id) === String(editId)) return false;
       if (ag.tecnico !== tecnico || ag.data !== data || !ag.horario) return false;
-
       const agMinutos = parseInt(ag.horario.split(':')[0]) * 60 + parseInt(ag.horario.split(':')[1] || '0');
       return Math.abs(minutos - agMinutos) < 60;
     });
@@ -160,6 +149,18 @@ window.AgendamentosModule = {
     this.atualizarLista();
     showToast('Agendamento salvo com sucesso!');
 
+    // ========== NOTIFICAR O TÉCNICO (se for diferente do usuário logado) ==========
+    if (agendamento.tecnico && agendamento.tecnico !== window.Auth.currentUser?.login) {
+      if (window.Notificacoes) {
+        window.Notificacoes.adicionar(
+          'Novo agendamento',
+          `Cliente: ${agendamento.cliente} - Data: ${agendamento.data} às ${agendamento.horario}`,
+          'agendamento',
+          { id: agendamento.id }
+        );
+      }
+    }
+
     if (window.GoogleSheets && window.Auth.can('sincronizar')) {
       await window.GoogleSheets.syncAgendamento(agendamento);
     }
@@ -178,14 +179,12 @@ window.AgendamentosModule = {
   editar(id) {
     const ag = window.State.agendamentos.find(a => a.id === id);
     if (!ag) return;
-
     document.getElementById('ag_cliente').value = ag.cliente;
     document.getElementById('ag_data').value = ag.data;
     document.getElementById('ag_horario').value = ag.horario;
     document.getElementById('ag_tecnico').value = ag.tecnico;
     document.getElementById('ag_descricao').value = ag.descricao || '';
     document.getElementById('ag_editId').value = ag.id;
-
     this.carregarOSDisponiveis();
     setTimeout(() => {
       const select = document.getElementById('ag_os_select');
@@ -198,7 +197,6 @@ window.AgendamentosModule = {
       showToast('Apenas administrador pode concluir agendamentos', true);
       return;
     }
-
     const index = window.State.agendamentos.findIndex(a => a.id === id);
     if (index !== -1) {
       window.State.agendamentos[index].status = 'concluido';
@@ -213,9 +211,7 @@ window.AgendamentosModule = {
       showToast('Apenas administrador pode excluir agendamentos', true);
       return;
     }
-
     if (!confirm('Excluir este agendamento?')) return;
-
     window.State.agendamentos = window.State.agendamentos.filter(a => a.id !== id);
     window.Storage.saveAgendamentos();
     this.atualizarLista();
@@ -237,10 +233,8 @@ window.AgendamentosModule = {
   atualizarLista() {
     const container = document.getElementById('agendamentosLista');
     if (!container) return;
-
     const pendentes = window.State.agendamentos.filter(a => a.status !== 'concluido');
     pendentes.sort((a, b) => (a.data + a.horario).localeCompare(b.data + b.horario));
-
     if (!pendentes.length) {
       container.innerHTML = `
         <div class="text-center p-8 text-[var(--muted)]">
@@ -250,17 +244,14 @@ window.AgendamentosModule = {
       `;
       return;
     }
-
     const hoje = window.Utils.dataHojeISO();
     let html = '';
-
     pendentes.forEach(ag => {
       const isHoje = ag.data === hoje;
       const isFuturo = ag.data > hoje;
       const cardClass = isHoje ? 'schedule-card-hoje border-2 border-[var(--success)]' : (isFuturo ? 'schedule-card-futuro border-2 border-[var(--info)]' : 'schedule-card-passado');
       const tagClass = isHoje ? 'schedule-tag-hoje bg-[var(--success)]' : (isFuturo ? 'schedule-tag-futuro bg-[var(--info)]' : 'schedule-tag-passado bg-[var(--muted)]');
       const tagText = isHoje ? 'HOJE' : (isFuturo ? ag.data.split('-').reverse().join('/') : ag.data);
-
       html += `
         <div class="schedule-card ${cardClass} bg-[var(--bg-secondary)] rounded-xl mb-3 overflow-hidden">
           <div class="p-4">
@@ -284,7 +275,6 @@ window.AgendamentosModule = {
         </div>
       `;
     });
-
     container.innerHTML = html;
   },
 
@@ -299,7 +289,6 @@ window.AgendamentosModule = {
   obterAgendamentosFuturos(tecnico) {
     const hoje = window.Utils.dataHojeISO();
     const pendentes = window.State.agendamentos.filter(a => a.tecnico === tecnico && a.status !== 'concluido' && a.data >= hoje);
-
     return {
       hoje: pendentes.filter(a => a.data === hoje),
       futuros: pendentes.filter(a => a.data > hoje),
