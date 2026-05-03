@@ -1,8 +1,12 @@
-// modules/clientes.js - Módulo de Clientes
+// modules/clientes.js - Módulo de Clientes (CORRIGIDO)
 window.ClientesModule = {
   editingId: null,
 
   init() {
+    // Garante que todos os clientes tenham equipamentos como array
+    window.State.clients.forEach(c => {
+      if (!Array.isArray(c.equipamentos)) c.equipamentos = [];
+    });
     this.renderTable();
     this.updateStats();
     this.loadEventListeners();
@@ -34,7 +38,8 @@ window.ClientesModule = {
     let osAprovadas = 0;
 
     window.State.clients.forEach(c => {
-      totalEquipamentos += (c.equipamentos || []).length;
+      const eq = Array.isArray(c.equipamentos) ? c.equipamentos : [];
+      totalEquipamentos += eq.length;
     });
 
     window.State.osHistory.forEach(os => {
@@ -76,7 +81,10 @@ window.ClientesModule = {
     const podeExcluir = window.Auth.can('clientes_excluir');
 
     list.forEach(cliente => {
-      const marcas = (cliente.equipamentos || []).map(e => e.marca).join(', ');
+      // Garantir que equipamentos é array
+      const equipArray = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
+      const marcas = equipArray.map(e => e.marca).join(', ');
+      
       let acoes = `<button onclick="ClientesModule.select(${cliente.id})" class="btn btn-primary text-xs py-1 px-2"><i class="fas fa-arrow-right"></i></button>`;
       if (podeEditar) acoes += ` <i class="fas fa-edit text-blue-400 cursor-pointer ml-2" onclick="ClientesModule.edit(${cliente.id})"></i>`;
       if (podeExcluir) acoes += ` <i class="fas fa-trash text-red-400 cursor-pointer ml-2" onclick="ClientesModule.delete(${cliente.id})"></i>`;
@@ -107,7 +115,9 @@ window.ClientesModule = {
     const cliente = window.State.clients.find(c => c.id === id);
     if (!cliente) return;
 
-    if (cliente.equipamentos && cliente.equipamentos.length) {
+    // Garante equipamentos como array
+    const equipamentos = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
+    if (equipamentos.length) {
       this.mostrarModalEquipamentos(cliente);
     } else {
       this.carregarDadosCliente(cliente);
@@ -121,7 +131,8 @@ window.ClientesModule = {
     if (!modal || !list) return;
 
     list.innerHTML = '';
-    cliente.equipamentos.forEach(eq => {
+    const equipamentos = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
+    equipamentos.forEach(eq => {
       const div = document.createElement('div');
       div.className = 'equip-option p-3 bg-[var(--bg-secondary)] rounded-lg mb-2 cursor-pointer hover:border-[var(--accent)] transition-all';
       div.innerHTML = `
@@ -263,9 +274,8 @@ window.ClientesModule = {
     const container = document.getElementById('equipamentosList');
     if (container) container.innerHTML = '';
 
-    if (cliente.equipamentos) {
-      cliente.equipamentos.forEach(eq => this.adicionarCampoEquipamento(eq.marca, eq.modelo, eq.serie, eq.qtd, eq.combustivel));
-    }
+    const equipamentos = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
+    equipamentos.forEach(eq => this.adicionarCampoEquipamento(eq.marca, eq.modelo, eq.serie, eq.qtd, eq.combustivel));
 
     document.getElementById('cad_btnCancelar').style.display = 'inline-flex';
     document.getElementById('clienteFormCard')?.scrollIntoView({ behavior: 'smooth' });
@@ -361,7 +371,8 @@ window.ClientesModule = {
 
     let csv = "Nome,CNPJ,Endereco,Cidade,Telefone,WhatsApp,E-mail,Responsavel,TelResp,Marcas\n";
     window.State.clients.forEach(c => {
-      const marcas = (c.equipamentos || []).map(e => e.marca).join(';');
+      const equipArray = Array.isArray(c.equipamentos) ? c.equipamentos : [];
+      const marcas = equipArray.map(e => e.marca).join(';');
       csv += `"${c.nome || ''}",${c.cnpj || ''},"${c.endereco || ''}","${c.cidade || ''}",${c.telefone || ''},${c.whatsapp || ''},${c.email || ''},"${c.responsavel_nome || ''}",${c.responsavel_telefone || ''},"${marcas}"\n`;
     });
 
@@ -418,6 +429,10 @@ window.ClientesModule = {
 
   loadFromSync(clientes) {
     if (Array.isArray(clientes) && clientes.length) {
+      // Normaliza os equipamentos para array
+      clientes.forEach(c => {
+        if (!Array.isArray(c.equipamentos)) c.equipamentos = [];
+      });
       window.State.clients = clientes;
       window.Storage.saveClients();
       this.renderTable();
