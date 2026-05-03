@@ -45,7 +45,7 @@ window.OnlineUsers = {
     if (!listDiv) return;
 
     if (!users.length) {
-      listDiv.innerHTML = '<div class="online-dropdown-empty">Nenhum usuário online</div>';
+      listDiv.innerHTML = '<div class="online-dropdown-empty"><i class="fas fa-user-slash"></i> Nenhum usuário online</div>';
       return;
     }
 
@@ -54,9 +54,10 @@ window.OnlineUsers = {
     users.forEach(u => {
       const statusClass = u.isOnline ? 'is-online' : 'is-offline';
       const statusText = u.isOnline ? 'Online' : 'Offline';
+      const avatarClass = u.nivel === 'admin' ? 'admin-avatar' : (u.nivel === 'tecnico' ? 'tecnico-avatar' : 'visualizador-avatar');
       html += `
         <div class="online-user-row">
-          <div class="online-user-avatar ${u.nivel === 'admin' ? 'admin-avatar' : 'tecnico-avatar'}">
+          <div class="online-user-avatar ${avatarClass}">
             ${(u.nome || u.login).charAt(0).toUpperCase()}
           </div>
           <div class="online-user-info">
