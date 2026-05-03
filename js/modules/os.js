@@ -1,4 +1,4 @@
-// modules/os.js - Módulo de Ordem de Serviço (com Timer e Assinaturas)
+// modules/os.js - Módulo de Ordem de Serviço (assinaturas consertadas)
 window.OSModule = {
   state: {
     currentStatus: 'abertura',
@@ -10,13 +10,12 @@ window.OSModule = {
     editingOS: null
   },
 
-  // Configurações
   config: {
     marcas: ["TOYOTA", "CLARK", "BYD", "PALETRANS", "LINDE", "HYSTER", "YALE", "CATERPILLAR", "KOMATSU", "MITSUBISHI", "NISSAN", "STILL", "CROWN", "JUNGHEINRICH", "TCM", "HYUNDAI", "DOOSAN", "HELI", "HANGCHA", "LONKING", "OUTRA"],
     maxFotos: 10
   },
 
-  // Timer interno (para não depender de global)
+  // Timer interno (completo)
   timer: {
     interval: null,
     running: false,
@@ -33,7 +32,6 @@ window.OSModule = {
     start() {
       if (this.running && !this.paused) return;
       if (this.paused) {
-        // retoma de pausa
         this.paused = false;
         this.running = true;
         this.startRealTime = Date.now();
@@ -77,7 +75,7 @@ window.OSModule = {
       }
       if (window.HorasModule) window.HorasModule.calcular();
       this._clearState();
-      this.updateDisplay(); // mostra 00:00:00
+      this.updateDisplay();
     },
 
     reset() {
@@ -154,16 +152,20 @@ window.OSModule = {
     this.populateMarcas();
     this.setDefaultDate();
     this.updateUI();
-    // Inicializa o timer
     this.timer.init();
-    // Inicializa assinaturas (se o módulo global existir)
+    // Inicializa assinaturas (garante que os eventos estejam ativos)
     if (window.Signature) window.Signature.init();
-    // Recupera o checklist se existir
     if (window.ChecklistModule) window.ChecklistModule.init();
+    // Força o redesenho dos canvases após um pequeno delay (garantia para celular)
+    setTimeout(() => {
+      if (window.Signature) {
+        if (window.Signature.canvases.tec) window.Signature._resize('tec');
+        if (window.Signature.canvases.cli) window.Signature._resize('cli');
+      }
+    }, 200);
   },
 
   loadEventListeners() {
-    // Botões principais
     const btnAbrir = document.getElementById('btnAbrirOS');
     if (btnAbrir) btnAbrir.onclick = () => this.mudarStatus('abertura');
 
@@ -221,7 +223,6 @@ window.OSModule = {
     const fotosPendencias = document.getElementById('fotosPendenciasInput');
     if (fotosPendencias) fotosPendencias.onchange = (e) => this.handleFotosPendencias(e);
 
-    // Horas (se existir módulo)
     if (window.HorasModule) window.HorasModule.init();
   },
 
@@ -263,14 +264,12 @@ window.OSModule = {
       }
     }
 
-    // Botões PDF e Email
     const btnPdf = document.getElementById('btnPreviaPDF');
     if (btnPdf) btnPdf.disabled = status !== 'aprovada';
 
     const btnEmail = document.getElementById('btnEnviarEmail');
     if (btnEmail) btnEmail.disabled = status !== 'aprovada';
 
-    // Status badge
     const badge = document.getElementById('statusBadge');
     if (badge) {
       const statusMap = {
@@ -285,7 +284,6 @@ window.OSModule = {
       badge.className = `status-badge ${s.class}`;
     }
 
-    // Steps
     const steps = ['abertura', 'execucao', 'finalizacao', 'fechada', 'aprovada'];
     const stepElements = document.querySelectorAll('.step');
     stepElements.forEach((el, i) => {
@@ -321,7 +319,6 @@ window.OSModule = {
       dados.horasTotais = window.Utils.getVal('horasTotais');
       dados.totalGeral = window.Utils.getVal('totalGeral');
     } else {
-      // fallback caso HorasModule não exista
       dados.horasTotais = window.Utils.getVal('horasTotais') || '0h';
       dados.totalGeral = window.Utils.getVal('totalGeral') || '00:00';
     }
@@ -365,13 +362,11 @@ window.OSModule = {
         dados[el.id] = el.value;
       }
     });
-
     const marcaSelect = document.getElementById('marcaSelect');
     const marcaOutra = document.getElementById('marcaOutra');
     if (marcaSelect) {
       dados.marca = marcaSelect.value === 'OUTRA' ? (marcaOutra?.value || '').toUpperCase() : marcaSelect.value;
     }
-
     return dados;
   },
 
