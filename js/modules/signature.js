@@ -1,4 +1,4 @@
-// modules/signature.js - Assinaturas digitais para OS (técnico e cliente)
+// modules/signature.js - Assinaturas digitais para OS
 window.Signature = {
   canvases: { tec: null, cli: null },
   ctx: { tec: null, cli: null },
@@ -7,10 +7,8 @@ window.Signature = {
   init() {
     this.canvases.tec = document.getElementById('sigTecnicoCanvas');
     this.canvases.cli = document.getElementById('sigClienteCanvas');
-    
     if (this.canvases.tec) this._setup('tec');
     if (this.canvases.cli) this._setup('cli');
-    
     window.addEventListener('resize', () => {
       if (this.canvases.tec) this._resize('tec');
       if (this.canvases.cli) this._resize('cli');
@@ -42,7 +40,6 @@ window.Signature = {
   _bindEvents(who) {
     const canvas = this.canvases[who];
     const ctx = this.ctx[who];
-    
     const getPoint = (e) => {
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
@@ -61,7 +58,6 @@ window.Signature = {
       y = Math.max(0, Math.min(y, canvas.height));
       return { x, y };
     };
-    
     const startDraw = (e) => {
       e.preventDefault();
       this.drawing[who] = true;
@@ -69,7 +65,6 @@ window.Signature = {
       ctx.beginPath();
       ctx.moveTo(p.x, p.y);
     };
-    
     const draw = (e) => {
       if (!this.drawing[who]) return;
       e.preventDefault();
@@ -79,11 +74,7 @@ window.Signature = {
       ctx.beginPath();
       ctx.moveTo(p.x, p.y);
     };
-    
-    const endDraw = () => {
-      this.drawing[who] = false;
-    };
-    
+    const endDraw = () => { this.drawing[who] = false; };
     canvas.addEventListener('mousedown', startDraw);
     canvas.addEventListener('mousemove', draw);
     canvas.addEventListener('mouseup', endDraw);
@@ -93,24 +84,20 @@ window.Signature = {
     canvas.addEventListener('touchend', endDraw);
   },
 
-  clear(who) {
+  clear(who, silent = true) {
     const canvas = this.canvases[who];
     const ctx = this.ctx[who];
     if (!canvas || !ctx) return;
-    
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 2;
     ctx.lineCap = 'round';
-    ctx.beginPath(); // evita traços fantasmas
-    
+    ctx.beginPath();
     const inputId = who === 'tec' ? 'assinaturaTecnicoData' : 'assinaturaClienteData';
-    const input = document.getElementById(inputId);
-    if (input) input.value = '';
-    
-    // Não exibe toast aqui (evita mensagens ao trocar de página)
+    document.getElementById(inputId).value = '';
+    if (!silent) showToast(`Assinatura do ${who === 'tec' ? 'técnico' : 'cliente'} limpa`);
   },
 
   save(who) {
@@ -127,13 +114,11 @@ window.Signature = {
     const canvas = this.canvases[who];
     const ctx = this.ctx[who];
     if (!canvas || !ctx) return;
-    
     const img = new Image();
     img.onload = () => {
       this._resize(who);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const inputId = who === 'tec' ? 'assinaturaTecnicoData' : 'assinaturaClienteData';
-      document.getElementById(inputId).value = dataURL;
+      document.getElementById(who === 'tec' ? 'assinaturaTecnicoData' : 'assinaturaClienteData').value = dataURL;
     };
     img.src = dataURL;
   }
