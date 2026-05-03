@@ -1,116 +1,16 @@
-// modules/jornada.js - Módulo de Jornada de Trabalho
-window.JornadaModule = {
-  jornadaAtual: null,
-
-  init() {
-    console.log('JornadaModule.init() chamado');
-    if (!window.Auth.can('jornada_registrar')) {
-      console.log('Usuário sem permissão para jornada');
-      return;
-    }
-    this.carregar();
-  },
-
-  carregar() {
-    console.log('Carregando jornada...');
-    const hoje = window.Utils.dataHojeISO();
-    const stored = window.Storage.loadJornada(window.Auth.currentUser?.login);
-
-    if (stored && stored.data === hoje) {
-      this.jornadaAtual = stored;
-      const btnNova = document.getElementById('btnNovaJornada');
-      if (btnNova) btnNova.style.display = 'inline-flex';
-    } else {
-      this.jornadaAtual = { etapa: 'inicio', dados: {}, data: hoje };
-      window.Storage.saveJornada(window.Auth.currentUser?.login, this.jornadaAtual);
-      const btnNova = document.getElementById('btnNovaJornada');
-      if (btnNova) btnNova.style.display = 'none';
-    }
-    this.renderizar();
-  },
-
-  renderizar() {
-    const container = document.getElementById('jornadaSteps');
-    const statusEl = document.getElementById('jornadaStatus');
-    if (!container) {
-      console.log('Elemento jornadaSteps não encontrado');
-      return;
-    }
-    
-    if (statusEl) {
-      statusEl.innerHTML = '<div class="text-[var(--success)]"><i class="fas fa-check-circle"></i> Sistema de jornada carregado. Preencha os dados abaixo.</div>';
-    }
-    
-    const dados = this.jornadaAtual.dados || {};
-    const inicioConcluido = dados.inicio && dados.inicio.concluido;
-    
-    let html = '';
-    
-    // Etapa 1 - Início
-    html += `<div class="journey-step bg-[var(--bg-secondary)] rounded-xl p-5 mb-5 border-l-4 border-l-[var(--accent)]">`;
-    html += `<h3 class="text-[var(--accent)] mb-4 flex items-center gap-2"><i class="fas fa-play-circle"></i> 1. Início do Trabalho</h3>`;
-    
-    if (!inicioConcluido) {
-      html += `
-        <div class="grid grid-cols-2 gap-3 mb-3">
-          <div><label class="text-xs text-[var(--muted)]">Placa do Veículo *</label><input type="text" id="jornada_placa_inicio" class="form-input" placeholder="ABC-1234"></div>
-          <div><label class="text-xs text-[var(--muted)]">KM Inicial *</label><input type="number" id="jornada_km_inicio" class="form-input" placeholder="0"></div>
-        </div>
-        <div class="mb-3">
-          <button onclick="JornadaModule.obterLocalizacao('inicio')" class="btn btn-info text-sm"><i class="fas fa-map-marker-alt"></i> Obter Localização</button>
-          <span id="localizacao_inicio_texto" class="text-xs text-[var(--muted)] ml-2"></span>
-        </div>
-        <div class="mb-3">
-          <label class="text-xs text-[var(--muted)]">Foto do Hodômetro</label>
-          <input type="file" id="jornada_foto_inicio" accept="image/*" class="form-input">
-          <div id="jornada_foto_inicio_preview" class="mt-2"></div>
-        </div>
-        <button onclick="JornadaModule.salvarEtapa('inicio')" class="btn btn-primary mt-2"><i class="fas fa-save"></i> Registrar Início</button>
-      `;
-    } else {
-      html += `<div class="text-green-400 text-sm"><i class="fas fa-check-circle"></i> Início registrado em ${window.esc(dados.inicio.dataHora)} - Placa: ${window.esc(dados.inicio.placa)} - KM: ${window.esc(dados.inicio.km)}</div>`;
-    }
-    html += `</div>`;
-    
-    container.innerHTML = html;
-  },
-  
-  obterLocalizacao(etapa) {
-    if (!navigator.geolocation) {
-      showToast('Geolocalização não suportada', true);
-      return;
-    }
-    
-    showToast('Obtendo localização...');
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const lat = position.coords.latitude.toFixed(6);
-        const lng = position.coords.longitude.toFixed(6);
-        const loc = `${lat}, ${lng}`;
-        
-        const textoEl = document.getElementById(`localizacao_${etapa}_texto`);
-        if (textoEl) textoEl.innerHTML = `<i class="fas fa-check-circle text-green-400"></i> ${loc}`;
-        
-        if (!this.jornadaAtual.dados[etapa]) this.jornadaAtual.dados[etapa] = {};
-        this.jornadaAtual.dados[etapa].localizacao = loc;
-        window.Storage.saveJornada(window.Auth.currentUser?.login, this.jornadaAtual);
-        showToast('Localização obtida!');
-      },
-      (error) => {
-        showToast(`Erro: ${error.message}`, true);
-      }
-    );
-  },
-  
-  async salvarEtapa(etapa) {
-    if (etapa === 'inicio') {
-      const placa = document.getElementById('jornada_placa_inicio')?.value.trim();
-      const km = document.getElementById('jornada_km_inicio')?.value.trim();
-      const localizacao = this.jornadaAtual.dados.inicio?.localizacao || '';
-      
-      if (!placa || !km || !localizacao) {
-        showToast('Preencha placa, KM e obtenha localização', true);
-        return;
+<!-- pages/jornada.html -->
+<div id="tab-jornada">
+  <div class="checklist-card p-4 md:p-5 mb-5">
+    <div class="flex justify-between items-center flex-wrap gap-3 mb-4">
+      <h2 class="font-display text-xl"><i class="fas fa-truck-moving"></i> Controle de Deslocamento</h2>
+      <button id="btnNovaJornada" onclick="JornadaModule.novaJornada()" class="btn btn-secondary text-sm" style="display:none">
+        <i class="fas fa-redo"></i> Nova Jornada
+      </button>
+    </div>
+    <div id="jornadaStatus" class="mb-4 p-3 rounded-lg bg-[var(--bg-secondary)] text-center"></div>
+    <div id="jornadaSteps"></div>
+  </div>
+</div>        return;
       }
       
       const fileInput = document.getElementById('jornada_foto_inicio');
