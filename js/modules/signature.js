@@ -1,152 +1,18 @@
-// modules/signature.js - Assinaturas digitais para OS (técnico e cliente)
-window.Signature = {
-  canvases: { tec: null, cli: null },
-  ctx: { tec: null, cli: null },
-  drawing: { tec: false, cli: false },
+clear(who) {
+  const canvas = this.canvases[who];
+  const ctx = this.ctx[who];
+  if (!canvas || !ctx) return;
 
-  init() {
-    this.canvases.tec = document.getElementById('sigTecnicoCanvas');
-    this.canvases.cli = document.getElementById('sigClienteCanvas');
-    
-    if (this.canvases.tec) this._setup('tec');
-    if (this.canvases.cli) this._setup('cli');
-    
-    // Redimensiona ao redimensionar a janela (importante para responsividade)
-    window.addEventListener('resize', () => {
-      if (this.canvases.tec) this._resize('tec');
-      if (this.canvases.cli) this._resize('cli');
-    });
-  },
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.beginPath(); // importante para evitar traços residuais
 
-  _setup(who) {
-    const canvas = this.canvases[who];
-    if (!canvas) return;
-    
-    this.ctx[who] = canvas.getContext('2d');
-    this._resize(who);
-    this.clear(who);
-    this._bindEvents(who);
-  },
-
-  _resize(who) {
-    const canvas = this.canvases[who];
-    const parent = canvas.parentElement;
-    if (!parent) return;
-    
-    // Largura igual à do elemento pai, altura fixa de 140px
-    const width = parent.clientWidth;
-    const height = 140;
-    
-    if (canvas.width !== width || canvas.height !== height) {
-      canvas.width = width;
-      canvas.height = height;
-      // Após redimensionar, limpa o canvas (perde o desenho)
-      this.clear(who);
-    }
-  },
-
-  _bindEvents(who) {
-    const canvas = this.canvases[who];
-    const ctx = this.ctx[who];
-    
-    const getPoint = (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      let clientX, clientY;
-      
-      if (e.touches) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-      } else {
-        clientX = e.clientX;
-        clientY = e.clientY;
-      }
-      
-      let x = (clientX - rect.left) * scaleX;
-      let y = (clientY - rect.top) * scaleY;
-      x = Math.max(0, Math.min(x, canvas.width));
-      y = Math.max(0, Math.min(y, canvas.height));
-      return { x, y };
-    };
-    
-    const startDraw = (e) => {
-      e.preventDefault();
-      this.drawing[who] = true;
-      const p = getPoint(e);
-      ctx.beginPath();
-      ctx.moveTo(p.x, p.y);
-    };
-    
-    const draw = (e) => {
-      if (!this.drawing[who]) return;
-      e.preventDefault();
-      const p = getPoint(e);
-      ctx.lineTo(p.x, p.y);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(p.x, p.y);
-    };
-    
-    const endDraw = () => {
-      this.drawing[who] = false;
-    };
-    
-    // Eventos mouse
-    canvas.addEventListener('mousedown', startDraw);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', endDraw);
-    canvas.addEventListener('mouseleave', endDraw);
-    
-    // Eventos touch (celular)
-    canvas.addEventListener('touchstart', startDraw);
-    canvas.addEventListener('touchmove', draw);
-    canvas.addEventListener('touchend', endDraw);
-  },
-
-  clear(who) {
-    const canvas = this.canvases[who];
-    const ctx = this.ctx[who];
-    if (!canvas || !ctx) return;
-    
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    
-    // Limpa o campo hidden correspondente
-    const inputId = who === 'tec' ? 'assinaturaTecnicoData' : 'assinaturaClienteData';
-    document.getElementById(inputId).value = '';
-  },
-
-  save(who) {
-    const canvas = this.canvases[who];
-    if (!canvas) return;
-    
-    const dataURL = canvas.toDataURL('image/png');
-    const inputId = who === 'tec' ? 'assinaturaTecnicoData' : 'assinaturaClienteData';
-    document.getElementById(inputId).value = dataURL;
-    showToast(`Assinatura do ${who === 'tec' ? 'técnico' : 'cliente'} salva`);
-  },
-
-  loadFromData(who, dataURL) {
-    if (!dataURL) return;
-    
-    const canvas = this.canvases[who];
-    const ctx = this.ctx[who];
-    if (!canvas || !ctx) return;
-    
-    const img = new Image();
-    img.onload = () => {
-      // Garante que o canvas tenha o tamanho correto antes de desenhar
-      this._resize(who);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      // Atualiza o campo hidden
-      const inputId = who === 'tec' ? 'assinaturaTecnicoData' : 'assinaturaClienteData';
-      document.getElementById(inputId).value = dataURL;
-    };
-    img.src = dataURL;
-  }
-};
+  const inputId = who === 'tec' ? 'assinaturaTecnicoData' : 'assinaturaClienteData';
+  document.getElementById(inputId).value = '';
+  
+  showToast(`Assinatura do ${who === 'tec' ? 'técnico' : 'cliente'} limpa`);
+}
