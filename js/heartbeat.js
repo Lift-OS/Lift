@@ -10,12 +10,11 @@ window.Heartbeat = {
 
   stop() {
     if (this._timer) clearInterval(this._timer);
-    // Opcional: enviar status offline
     if (window.GoogleSheets && window.Auth.currentUser) {
       window.GoogleSheets.postData('heartbeat', {
         login: window.Auth.currentUser.login,
         status: 'offline'
-      });
+      }).catch(() => {});
     }
   },
 
