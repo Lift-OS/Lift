@@ -16,7 +16,7 @@
       <h2 class="font-display text-xl" id="orcFormTitle"><i class="fas fa-file-invoice-dollar"></i> Novo Orçamento</h2>
       <div class="flex gap-2">
         <button id="btnOrcNovo" class="btn btn-secondary text-sm"><i class="fas fa-pen-alt"></i> Novo</button>
-        <button type="button" onclick="SignatureOrc.clear(false)" class="btn btn-secondary text-xs">Limpar</button>
+        <button id="btnOrcLimpar" class="btn btn-secondary text-sm"><i class="fas fa-trash-alt"></i> Limpar</button>
       </div>
     </div>
     
@@ -34,7 +34,7 @@
     </div>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-      <div><label class="block text-xs text-[var(--muted)] mb-1">Série / Horímetro</label><input type="text" id="orc_serie_hor" class="form-input" placeholder="N° Série - Horímetro"></div>
+      <div><label class="block text-xs text-[var(--muted)] mb-1">Série / Combustível</label><input type="text" id="orc_serie_combustivel" class="form-input" placeholder="Série: 12345, Combustível: Diesel"></div>
       <div><label class="block text-xs text-[var(--muted)] mb-1">Técnico Responsável</label><select id="orc_tecnico" class="form-input"><option value="">Selecione</option></select></div>
     </div>
     
@@ -46,6 +46,9 @@
     </div>
     <div id="orcItensLista"></div>
     <button type="button" onclick="OrcamentoModule.addItem()" class="btn btn-secondary text-sm mt-2 w-full"><i class="fas fa-plus"></i> Adicionar Item</button>
+    
+    <!-- Datalist para sugestão de peças do estoque -->
+    <datalist id="pecasDatalist"></datalist>
     
     <div class="orc-total-box bg-[var(--bg-secondary)] p-4 rounded-lg mt-4">
       <div class="flex justify-between py-1"><span>Subtotal</span><span class="font-mono" id="orcSubtotal">R$ 0,00</span></div>
