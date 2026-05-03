@@ -1,9 +1,18 @@
 // modules/orcamento.js - Módulo de Orçamentos (completo e corrigido)
 window.OrcamentoModule = {
-  state: {
-    itens: [],
-    editId: null
+  state: { itens: [], editId: null },
+  // ... outros métodos ...
+  loadFromSync(orcamentos) {
+    if (Array.isArray(orcamentos) && orcamentos.length) {
+      window.State.orcamentos = orcamentos;
+      window.Storage.saveOrcamentos();
+      this.renderLista();
+      this.updateStats();
+      this.preencherClientes();
+    }
   },
+  // ... resto dos métodos ...
+};
 
   // ========== PERSISTÊNCIA AUTOMÁTICA ==========
   salvarEstado() {
