@@ -1,4 +1,4 @@
-// modules/clientes.js - Módulo de Clientes (com normalização de equipamentos)
+// modules/clientes.js - Módulo de Clientes (com escolha OS/Orçamento)
 window.ClientesModule = {
   editingId: null,
 
@@ -17,12 +17,10 @@ window.ClientesModule = {
         console.warn('Erro ao parsear equipamentos do cliente', cliente.nome, e);
       }
     }
-    // Se não for array válido, define como array vazio
     cliente.equipamentos = [];
   },
 
   init() {
-    // Normaliza todos os clientes existentes (vindos de storage local)
     window.State.clients.forEach(c => this.normalizarEquipamentos(c));
     this.renderTable();
     this.updateStats();
@@ -98,11 +96,10 @@ window.ClientesModule = {
     const podeExcluir = window.Auth.can('clientes_excluir');
 
     list.forEach(cliente => {
-      // Garantir que equipamentos é array (segurança extra)
       const equipArray = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
       const marcas = equipArray.map(e => e.marca).join(', ');
       
-      let acoes = `<button onclick="ClientesModule.select(${cliente.id})" class="btn btn-primary text-xs py-1 px-2"><i class="fas fa-arrow-right"></i></button>`;
+      let acoes = `<button onclick="ClientesModule.select(${cliente.id})" class="btn btn-primary text-xs py-1 px-2"><i class="fas fa-arrow-right"></i> Selecionar</button>`;
       if (podeEditar) acoes += ` <i class="fas fa-edit text-blue-400 cursor-pointer ml-2" onclick="ClientesModule.edit(${cliente.id})"></i>`;
       if (podeExcluir) acoes += ` <i class="fas fa-trash text-red-400 cursor-pointer ml-2" onclick="ClientesModule.delete(${cliente.id})"></i>`;
 
@@ -128,26 +125,128 @@ window.ClientesModule = {
     this.renderTable(filtered);
   },
 
+  // NOVO: Abre modal de escolha entre OS e Orçamento
   select(id) {
     const cliente = window.State.clients.find(c => c.id === id);
     if (!cliente) return;
+    window.clienteSelecionado = cliente;
+    this.mostrarModalEscolha(cliente);
+  },
 
-    // Normaliza por segurança
-    this.normalizarEquipamentos(cliente);
+  mostrarModalEscolha(cliente) {
+    let modal = document.getElementById('modalEscolhaCliente');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'modalEscolhaCliente';
+      modal.className = 'modal';
+      modal.innerHTML = `
+        <div class="modal-content bg-[var(--card)] rounded-2xl p-6 max-w-sm w-full text-center">
+          <h3 class="text-xl font-bold text-[var(--accent)] mb-4">${window.esc(cliente.nome)}</h3>
+          <p class="text-sm text-[var(--muted)] mb-6">O que deseja fazer com este cliente?</p>
+          <div class="flex flex-col gap-3">
+            <button id="escolhaOS" class="btn btn-primary w-full"><i class="fas fa-clipboard-list"></i> Abrir Ordem de Serviço</button>
+            <button id="escolhaOrcamento" class="btn btn-info w-full"><i class="fas fa-file-invoice-dollar"></i> Criar Orçamento</button>
+            <button id="escolhaCancelar" class="btn btn-secondary w-full"><i class="fas fa-times"></i> Cancelar</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    } else {
+      const titulo = modal.querySelector('h3');
+      if (titulo) titulo.innerHTML = window.esc(cliente.nome);
+    }
+
+    // Remove listeners antigos evitando duplicidade
+    const btnOS = document.getElementById('escolhaOS');
+    const btnOrc = document.getElementById('escolhaOrcamento');
+    const btnCancel = document.getElementById('escolhaCancelar');
+    if (btnOS && btnOrc && btnCancel) {
+      const newBtnOS = btnOS.cloneNode(true);
+      const newBtnOrc = btnOrc.cloneNode(true);
+      const newBtnCancel = btnCancel.cloneNode(true);
+      btnOS.parentNode.replaceChild(newBtnOS, btnOS);
+      btnOrc.parentNode.replaceChild(newBtnOrc, btnOrc);
+      btnCancel.parentNode.replaceChild(newBtnCancel, btnCancel);
+
+      newBtnOS.onclick = () => {
+        modal.style.display = 'none';
+        this.abrirOS(cliente);
+      };
+      newBtnOrc.onclick = () => {
+        modal.style.display = 'none';
+        this.abrirOrcamento(cliente);
+      };
+      newBtnCancel.onclick = () => {
+        modal.style.display = 'none';
+      };
+    }
+
+    modal.style.display = 'flex';
+  },
+
+  abrirOS(cliente) {
+    this.carregarDadosCliente(cliente);
+    const equipamentos = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
+    if (equipamentos.length === 1) {
+      this.carregarEquipamento(equipamentos[0], cliente);
+    } else if (equipamentos.length > 1) {
+      this.mostrarModalEquipamentos(cliente);
+    }
+    window.PageLoader.load('os');
+    showToast(`Cliente ${cliente.nome} carregado na OS`);
+  },
+
+  abrirOrcamento(cliente) {
+    window.Utils.setVal('orc_cliente', cliente.nome);
+    window.Utils.setVal('orc_equipamento', '');
+    window.Utils.setVal('orc_serie_hor', '');
     const equipamentos = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
     if (equipamentos.length) {
-      this.mostrarModalEquipamentos(cliente);
-    } else {
-      this.carregarDadosCliente(cliente);
-      window.PageLoader.load('os');
+      const eq = equipamentos[0];
+      window.Utils.setVal('orc_equipamento', `${eq.marca} ${eq.modelo || ''}`.trim());
+      if (eq.serie) window.Utils.setVal('orc_serie_hor', eq.serie);
     }
+    window.PageLoader.load('orcamento');
+    showToast(`Cliente ${cliente.nome} carregado no orçamento`);
+  },
+
+  // Mantém os métodos existentes
+  carregarDadosCliente(cliente) {
+    window.Utils.setVal('cliente', cliente.nome);
+    window.Utils.setVal('cnpj', cliente.cnpj || '');
+    window.Utils.setVal('cidadeCliente', cliente.cidade || '');
+    window.Utils.setVal('endereco', cliente.endereco || '');
+    window.Utils.setVal('whatsappCliente', cliente.whatsapp || '');
+  },
+
+  carregarEquipamento(equip, cliente) {
+    this.carregarDadosCliente(cliente);
+    const marcaSelect = document.getElementById('marcaSelect');
+    const marcaOutraDiv = document.getElementById('marcaOutraDiv');
+    const marcaOutra = document.getElementById('marcaOutra');
+
+    if (marcaSelect) {
+      const marca = equip.marca || '';
+      const marcasList = ["TOYOTA", "CLARK", "BYD", "PALETRANS", "LINDE", "HYSTER", "YALE", "CATERPILLAR", "KOMATSU", "MITSUBISHI", "NISSAN", "STILL", "CROWN", "JUNGHEINRICH", "TCM", "HYUNDAI", "DOOSAN", "HELI", "HANGCHA", "LONKING"];
+      if (marcasList.includes(marca)) {
+        marcaSelect.value = marca;
+        if (marcaOutraDiv) marcaOutraDiv.style.display = 'none';
+      } else if (marca) {
+        marcaSelect.value = 'OUTRA';
+        if (marcaOutraDiv) marcaOutraDiv.style.display = 'block';
+        if (marcaOutra) marcaOutra.value = marca;
+      }
+    }
+    window.Utils.setVal('modelo', equip.modelo || '');
+    window.Utils.setVal('numSerie', equip.serie || '');
+    if (equip.combustivel) window.Utils.setVal('combustivel', equip.combustivel);
+    showToast('Equipamento carregado');
   },
 
   mostrarModalEquipamentos(cliente) {
     const modal = document.getElementById('equipModal');
     const list = document.getElementById('equipList');
     if (!modal || !list) return;
-
     list.innerHTML = '';
     const equipamentos = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
     equipamentos.forEach(eq => {
@@ -160,47 +259,11 @@ window.ClientesModule = {
       div.onclick = () => {
         this.carregarEquipamento(eq, cliente);
         modal.style.display = 'none';
+        window.PageLoader.load('os');
       };
       list.appendChild(div);
     });
-
     modal.style.display = 'flex';
-  },
-
-  carregarEquipamento(equip, cliente) {
-    this.carregarDadosCliente(cliente);
-
-    const marcaSelect = document.getElementById('marcaSelect');
-    const marcaOutraDiv = document.getElementById('marcaOutraDiv');
-    const marcaOutra = document.getElementById('marcaOutra');
-
-    if (marcaSelect) {
-      const marca = equip.marca || '';
-      const marcasList = ["TOYOTA", "CLARK", "BYD", "PALETRANS", "LINDE", "HYSTER", "YALE", "CATERPILLAR", "KOMATSU", "MITSUBISHI", "NISSAN", "STILL", "CROWN", "JUNGHEINRICH", "TCM", "HYUNDAI", "DOOSAN", "HELI", "HANGCHA", "LONKING"];
-
-      if (marcasList.includes(marca)) {
-        marcaSelect.value = marca;
-        if (marcaOutraDiv) marcaOutraDiv.style.display = 'none';
-      } else if (marca) {
-        marcaSelect.value = 'OUTRA';
-        if (marcaOutraDiv) marcaOutraDiv.style.display = 'block';
-        if (marcaOutra) marcaOutra.value = marca;
-      }
-    }
-
-    window.Utils.setVal('modelo', equip.modelo || '');
-    window.Utils.setVal('numSerie', equip.serie || '');
-    if (equip.combustivel) window.Utils.setVal('combustivel', equip.combustivel);
-
-    showToast('Equipamento carregado');
-  },
-
-  carregarDadosCliente(cliente) {
-    window.Utils.setVal('cliente', cliente.nome);
-    window.Utils.setVal('cnpj', cliente.cnpj || '');
-    window.Utils.setVal('cidadeCliente', cliente.cidade || '');
-    window.Utils.setVal('endereco', cliente.endereco || '');
-    window.Utils.setVal('whatsappCliente', cliente.whatsapp || '');
   },
 
   async save() {
@@ -208,13 +271,11 @@ window.ClientesModule = {
       showToast('Apenas administrador pode cadastrar clientes', true);
       return;
     }
-
     const nome = document.getElementById('cad_nome')?.value.trim();
     if (!nome) {
       showToast('Nome do cliente é obrigatório', true);
       return;
     }
-
     const equipamentos = [];
     const equipItems = document.querySelectorAll('#equipamentosList .equip-item');
     equipItems.forEach(item => {
@@ -222,7 +283,6 @@ window.ClientesModule = {
       const outraMarca = item.querySelector('.outra-marca');
       let marca = marcaSelect?.value || '';
       if (marca === 'OUTRA' && outraMarca) marca = outraMarca.value.toUpperCase();
-
       if (marca) {
         equipamentos.push({
           marca: marca,
@@ -233,7 +293,6 @@ window.ClientesModule = {
         });
       }
     });
-
     const cliente = {
       id: this.editingId || Date.now(),
       nome: nome,
@@ -247,7 +306,6 @@ window.ClientesModule = {
       responsavel_telefone: document.getElementById('cad_responsavel_telefone')?.value || '',
       equipamentos: equipamentos
     };
-
     if (this.editingId) {
       const index = window.State.clients.findIndex(c => c.id === this.editingId);
       if (index >= 0) window.State.clients[index] = cliente;
@@ -258,12 +316,10 @@ window.ClientesModule = {
       window.State.clients.push(cliente);
       showToast('Cliente cadastrado');
     }
-
     window.Storage.saveClients();
     this.clearForm();
     this.renderTable();
     this.updateStats();
-
     if (window.GoogleSheets && window.Auth.can('sincronizar')) {
       await window.GoogleSheets.syncSingleCliente(cliente);
     }
@@ -274,13 +330,9 @@ window.ClientesModule = {
       showToast('Apenas administrador pode editar', true);
       return;
     }
-
     const cliente = window.State.clients.find(c => c.id === id);
     if (!cliente) return;
-
-    // Normaliza equipamentos (caso venha como string)
     this.normalizarEquipamentos(cliente);
-
     this.editingId = id;
     document.getElementById('cad_nome').value = cliente.nome || '';
     document.getElementById('cad_cnpj').value = cliente.cnpj || '';
@@ -291,13 +343,10 @@ window.ClientesModule = {
     document.getElementById('cad_email').value = cliente.email || '';
     document.getElementById('cad_responsavel_nome').value = cliente.responsavel_nome || '';
     document.getElementById('cad_responsavel_telefone').value = cliente.responsavel_telefone || '';
-
     const container = document.getElementById('equipamentosList');
     if (container) container.innerHTML = '';
-
     const equipamentos = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
     equipamentos.forEach(eq => this.adicionarCampoEquipamento(eq.marca, eq.modelo, eq.serie, eq.qtd, eq.combustivel));
-
     document.getElementById('cad_btnCancelar').style.display = 'inline-flex';
     document.getElementById('clienteFormCard')?.scrollIntoView({ behavior: 'smooth' });
   },
@@ -307,9 +356,7 @@ window.ClientesModule = {
       showToast('Apenas administrador pode excluir', true);
       return;
     }
-
     if (!confirm('Excluir este cliente permanentemente?')) return;
-
     window.State.clients = window.State.clients.filter(c => c.id !== id);
     window.Storage.saveClients();
     this.renderTable();
@@ -329,7 +376,6 @@ window.ClientesModule = {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
-
     const container = document.getElementById('equipamentosList');
     if (container) container.innerHTML = '';
   },
@@ -337,10 +383,8 @@ window.ClientesModule = {
   adicionarCampoEquipamento(marca, modelo, serie, qtd, combustivel) {
     const container = document.getElementById('equipamentosList');
     if (!container) return;
-
     const div = document.createElement('div');
     div.className = 'equip-item grid grid-cols-1 md:grid-cols-6 gap-2 p-2 bg-[var(--bg-secondary)] rounded-lg mb-2';
-
     const marcasOptions = `
       <option value="">Selecione</option>
       <option value="TOYOTA" ${marca === 'TOYOTA' ? 'selected' : ''}>TOYOTA</option>
@@ -356,7 +400,6 @@ window.ClientesModule = {
       <option value="NISSAN" ${marca === 'NISSAN' ? 'selected' : ''}>NISSAN</option>
       <option value="OUTRA" ${marca === 'OUTRA' || (marca && !['TOYOTA', 'CLARK', 'BYD', 'PALETRANS', 'LINDE', 'HYSTER', 'YALE', 'CATERPILLAR', 'KOMATSU', 'MITSUBISHI', 'NISSAN'].includes(marca)) ? 'selected' : ''}>OUTRA</option>
     `;
-
     div.innerHTML = `
       <select class="form-input equip-marca">${marcasOptions}</select>
       <div class="outra-marca-container" style="display:${marca && !['TOYOTA', 'CLARK', 'BYD', 'PALETRANS', 'LINDE', 'HYSTER', 'YALE', 'CATERPILLAR', 'KOMATSU', 'MITSUBISHI', 'NISSAN'].includes(marca) ? 'block' : 'none'}">
@@ -374,13 +417,11 @@ window.ClientesModule = {
       </select>
       <button type="button" class="text-red-500" onclick="this.closest('.equip-item').remove()"><i class="fas fa-trash"></i></button>
     `;
-
     const marcaSelect = div.querySelector('.equip-marca');
     const outraDiv = div.querySelector('.outra-marca-container');
     marcaSelect.onchange = () => {
       outraDiv.style.display = marcaSelect.value === 'OUTRA' ? 'block' : 'none';
     };
-
     container.appendChild(div);
   },
 
@@ -389,14 +430,12 @@ window.ClientesModule = {
       showToast('Apenas administrador pode exportar', true);
       return;
     }
-
     let csv = "Nome,CNPJ,Endereco,Cidade,Telefone,WhatsApp,E-mail,Responsavel,TelResp,Marcas\n";
     window.State.clients.forEach(c => {
       const equipArray = Array.isArray(c.equipamentos) ? c.equipamentos : [];
       const marcas = equipArray.map(e => e.marca).join(';');
       csv += `"${c.nome || ''}",${c.cnpj || ''},"${c.endereco || ''}","${c.cidade || ''}",${c.telefone || ''},${c.whatsapp || ''},${c.email || ''},"${c.responsavel_nome || ''}",${c.responsavel_telefone || ''},"${marcas}"\n`;
     });
-
     const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -410,7 +449,6 @@ window.ClientesModule = {
       showToast('Apenas administrador pode importar', true);
       return;
     }
-
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.csv';
@@ -434,7 +472,7 @@ window.ClientesModule = {
               email: cols[6] || '',
               responsavel_nome: cols[7] || '',
               responsavel_telefone: cols[8] || '',
-              equipamentos: []  // CSV não traz equipamentos estruturados
+              equipamentos: []
             });
           }
         }
@@ -450,7 +488,6 @@ window.ClientesModule = {
 
   loadFromSync(clientes) {
     if (Array.isArray(clientes) && clientes.length) {
-      // Normaliza cada cliente (converte string JSON para array)
       clientes.forEach(c => this.normalizarEquipamentos(c));
       window.State.clients = clientes;
       window.Storage.saveClients();
