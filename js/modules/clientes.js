@@ -209,17 +209,18 @@ window.ClientesModule = {
     else this._finalizarAbrirOrcamento(cliente, null);
   },
 
-  _finalizarAbrirOrcamento(cliente, equip) {
-    window.Utils.setVal('orc_cliente', cliente.nome);
-    window.Utils.setVal('orc_equipamento', '');
-    window.Utils.setVal('orc_serie_hor', '');
-    if (equip) {
-      const marcaModelo = `${equip.marca || ''} ${equip.modelo || ''}`.trim();
-      window.Utils.setVal('orc_equipamento', marcaModelo);
-      if (equip.serie) window.Utils.setVal('orc_serie_hor', equip.serie);
-    }
-    showToast(`Cliente ${cliente.nome} carregado no orçamento`);
-  },
+_finalizarAbrirOrcamento(cliente, equip) {
+  window.Utils.setVal('orc_cliente', cliente.nome);
+  window.Utils.setVal('orc_equipamento', '');
+  window.Utils.setVal('orc_serie_combustivel', '');
+  if (equip) {
+    const marcaModelo = `${equip.marca || ''} ${equip.modelo || ''}`.trim();
+    window.Utils.setVal('orc_equipamento', marcaModelo);
+    const serieComb = `Série: ${equip.serie || 'N/A'} | Combustível: ${equip.combustivel || 'N/A'}`;
+    window.Utils.setVal('orc_serie_combustivel', serieComb);
+  }
+  showToast(`Cliente ${cliente.nome} carregado no orçamento`);
+}
 
   tryRestaurarDados() {
     const dados = sessionStorage.getItem('clienteSelecionado');
