@@ -1,12 +1,14 @@
-// modules/online-users.js - Widget de usuários online
+// modules/online-users.js
 window.OnlineUsers = {
   _timer: null,
   _open: false,
   _users: [],
 
   start() {
+    console.log('OnlineUsers: iniciando...');
     this.fetch();
-    this._timer = setInterval(() => this.fetch(), 30000); // atualiza a cada 30 segundos
+    this._timer = setInterval(() => this.fetch(), 30000);
+    
     document.addEventListener('click', (e) => {
       const widget = document.getElementById('onlineWidget');
       if (widget && !widget.contains(e.target)) this.closeDropdown();
@@ -37,7 +39,6 @@ window.OnlineUsers = {
       }
     } catch(e) {
       console.error('Erro ao buscar usuários online:', e);
-      this.updateList(this._users); // fallback para lista atual
     }
   },
 
@@ -54,7 +55,7 @@ window.OnlineUsers = {
     if (!listDiv) return;
     
     if (!this._users.length) {
-      listDiv.innerHTML = '<div class="online-dropdown-empty"><i class="fas fa-user-slash"></i> Nenhum usuário online</div>';
+      listDiv.innerHTML = '<div class="online-dropdown-empty">Nenhum usuário online</div>';
       return;
     }
 
