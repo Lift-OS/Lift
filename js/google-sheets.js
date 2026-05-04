@@ -1,6 +1,6 @@
 // ========== SINCRONIZAÇÃO COM GOOGLE SHEETS ==========
 window.GoogleSheets = {
-  webAppUrl: 'https://script.google.com/macros/s/AKfycbyGBTlzkjK2R0WgwsMIxg4xWm4dhmgWEll0RAzg-RQ/dev',
+  webAppUrl: 'https://script.google.com/macros/s/AKfycbx3RptTyf4Kv_Iw1HcIXUWmUOl3YkRztwn-6_n1Aqd0F3S8EXvuthEpvPBzgODCswiV/exec',
 
   async postData(action, data) {
     try {
