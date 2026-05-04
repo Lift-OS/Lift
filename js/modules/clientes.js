@@ -306,23 +306,22 @@ window.ClientesModule = {
   importCSV() { /* ... (mantenha o original) ... */ },
 
   loadFromSync(clientes) {
-    if (Array.isArray(clientes) && clientes.length) {
-      // Padroniza as chaves para minúsculo e normaliza equipamentos
-      const padronizados = clientes.map(c => {
-        const novo = {};
-        for (let [chave, valor] of Object.entries(c)) {
-          novo[chave.toLowerCase()] = valor;
-        }
-        if (typeof novo.equipamentos === 'string') {
-          try { novo.equipamentos = JSON.parse(novo.equipamentos); } catch(e) { novo.equipamentos = []; }
-        }
-        if (!Array.isArray(novo.equipamentos)) novo.equipamentos = [];
-        return novo;
-      });
-      window.State.clients = padronizados;
-      window.Storage.saveClients();
-      this.renderTable();
-      this.updateStats();
-    }
+  if (Array.isArray(clientes) && clientes.length) {
+    const padronizados = clientes.map(c => {
+      const novo = {};
+      for (let [chave, valor] of Object.entries(c)) {
+        novo[chave.toLowerCase()] = valor;
+      }
+      if (typeof novo.equipamentos === 'string') {
+        try { novo.equipamentos = JSON.parse(novo.equipamentos); } catch(e) { novo.equipamentos = []; }
+      }
+      if (!Array.isArray(novo.equipamentos)) novo.equipamentos = [];
+      return novo;
+    });
+    window.State.clients = padronizados;
+    window.Storage.saveClients();
+    this.renderTable();
+    this.updateStats();
   }
+}
 };
