@@ -147,6 +147,17 @@ window.App = {
     if (window.Horas) window.Horas.initListeners();
     if (window.Notificacoes) window.Notificacoes.init();
 
+    // ========== INICIALIZAÇÃO DOS MÓDULOS ONLINE ==========
+    // Inicia heartbeat (para aparecer como online)
+    if (window.Auth.can('heartbeat') && window.Heartbeat) {
+      window.Heartbeat.start();
+    }
+    // Inicia widget de usuários online
+    if (window.Auth.can('heartbeat') && window.OnlineUsers) {
+      window.OnlineUsers.start();
+    }
+    // =====================================================
+
     // Sincronização
     if (window.Auth.can('sincronizar') && navigator.onLine) {
       setTimeout(() => window.GoogleSheets.fetchFromSheet(), 1500);
