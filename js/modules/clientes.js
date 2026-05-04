@@ -1,9 +1,25 @@
-// modules/clientes.js - Versão estável
+// modules/clientes.js - Versão original que funcionava
 window.ClientesModule = {
   editingId: null,
 
+  normalizarEquipamentos(cliente) {
+    if (!cliente) return;
+    if (Array.isArray(cliente.equipamentos)) return;
+    if (typeof cliente.equipamentos === 'string' && cliente.equipamentos.trim() !== '') {
+      try {
+        const parsed = JSON.parse(cliente.equipamentos);
+        if (Array.isArray(parsed)) {
+          cliente.equipamentos = parsed;
+          return;
+        }
+      } catch(e) { console.warn('Erro ao parsear equipamentos', e); }
+    }
+    cliente.equipamentos = [];
+  },
+
   init() {
     setTimeout(() => {
+      window.State.clients.forEach(c => this.normalizarEquipamentos(c));
       this.renderTable();
       if (typeof this.updateStats === 'function') this.updateStats();
       this.loadEventListeners();
@@ -26,7 +42,9 @@ window.ClientesModule = {
   updateStats() {
     const totalClientes = window.State.clients.length;
     const elTotal = document.getElementById('statTotalClientes');
+    const elMarcas = document.getElementById('statTotalMarcas');
     if (elTotal) elTotal.innerText = totalClientes;
+    if (elMarcas) elMarcas.innerText = '0';
   },
 
   renderTable() {
@@ -40,11 +58,13 @@ window.ClientesModule = {
     }
 
     window.State.clients.forEach(cliente => {
+      const equipArray = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
+      const marcas = equipArray.map(e => e.marca || '').join(', ');
       const row = tbody.insertRow();
       row.innerHTML = `
         <td class="p-2">${window.esc(cliente.nome || '')}</td>
         <td class="p-2">${window.esc(cliente.cidade || '-')}</td>
-        <td class="p-2">-</td>
+        <td class="p-2">${window.esc(marcas) || '-'}</td>
         <td class="p-2">
           <button onclick="ClientesModule.selecionarCliente(${cliente.id})" class="btn btn-primary text-xs py-1 px-2">
             <i class="fas fa-arrow-right"></i> Selecionar
@@ -66,8 +86,6 @@ window.ClientesModule = {
   selecionarCliente(id) {
     const cliente = window.State.clients.find(c => c.id === id);
     if (!cliente) return;
-    
-    // Modal de escolha entre OS e Orçamento
     this.mostrarModalEscolha(cliente);
   },
 
@@ -124,8 +142,9 @@ window.ClientesModule = {
   },
 
   async save() {
+    if (!window.Auth.can('clientes_cadastrar')) { showToast('Sem permissão', true); return; }
     const nome = document.getElementById('cad_nome')?.value.trim();
-    if (!nome) { showToast('Nome do cliente é obrigatório', true); return; }
+    if (!nome) { showToast('Nome obrigatório', true); return; }
     
     const cliente = {
       id: this.editingId || Date.now(),
@@ -156,6 +175,7 @@ window.ClientesModule = {
   },
 
   edit(id) {
+    if (!window.Auth.can('clientes_editar')) { showToast('Sem permissão', true); return; }
     const cliente = window.State.clients.find(c => c.id === id);
     if (!cliente) return;
     
@@ -171,7 +191,8 @@ window.ClientesModule = {
   },
 
   delete(id) {
-    if (!confirm('Excluir este cliente?')) return;
+    if (!window.Auth.can('clientes_excluir')) { showToast('Sem permissão', true); return; }
+    if (!confirm('Excluir cliente?')) return;
     window.State.clients = window.State.clients.filter(c => c.id !== id);
     window.Storage.saveClients();
     this.renderTable();
@@ -186,11 +207,12 @@ window.ClientesModule = {
   },
 
   clearForm() {
-    const fields = ['cad_nome', 'cad_cnpj', 'cad_endereco', 'cad_cidade', 'cad_telefone', 'cad_whatsapp', 'cad_email', 'cad_responsavel_nome', 'cad_responsavel_telefone'];
+    const fields = ['cad_nome', 'cad_cnpj', 'cad_endereco', 'cad_cidade', 'cad_telefone', 'cad_whatsapp', 'cad_email'];
     fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   },
 
   exportCSV() {
+    if (!window.Auth.can('clientes_exportar_csv')) return;
     let csv = "Nome,CNPJ,Endereco,Cidade,Telefone,WhatsApp,E-mail\n";
     window.State.clients.forEach(c => {
       csv += `"${c.nome || ''}",${c.cnpj || ''},"${c.endereco || ''}","${c.cidade || ''}",${c.telefone || ''},${c.whatsapp || ''},${c.email || ''}\n`;
@@ -200,9 +222,11 @@ window.ClientesModule = {
     link.href = URL.createObjectURL(blob);
     link.download = `clientes_${window.Utils.dataHojeISO()}.csv`;
     link.click();
+    showToast('Clientes exportados');
   },
 
   importCSV() {
+    if (!window.Auth.can('clientes_importar_csv')) return;
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.csv';
