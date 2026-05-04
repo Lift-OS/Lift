@@ -16,7 +16,7 @@ window.Auth = {
       historico_limpar: true, agendamentos_criar: true, agendamentos_editar: true, agendamentos_excluir: true,
       agendamentos_concluir: true, agendamentos_visualizar: true, usuarios_criar: true,
       usuarios_editar: true, usuarios_excluir: true, usuarios_visualizar: true, permissoes_editar: true,
-      jornada_registrar: false, estoque_cadastrar: true, estoque_editar: true, estoque_excluir: true,
+      jornada_registrar: true, estoque_cadastrar: true, estoque_editar: true, estoque_excluir: true,
       estoque_movimentar: true, orcamento_criar: true, orcamento_editar: true, orcamento_excluir: true,
       orcamento_aprovar: true, orcamento_visualizar: true
     },
@@ -70,13 +70,16 @@ window.Auth = {
     return this.currentUser && this.currentUser.nivel === 'tecnico';
   },
 
+  // Garante que os usuários padrão existam
   getUsers() {
     let users = localStorage.getItem('LiftOS_users');
     if (users) {
       try {
-        return JSON.parse(users);
-      } catch (e) { }
+        const parsed = JSON.parse(users);
+        if (Array.isArray(parsed) && parsed.length) return parsed;
+      } catch(e) {}
     }
+    // Usuários padrão
     const defaultUsers = [
       { id: 1, nome: 'Administrador', login: 'admin', senha: 'admin123', nivel: 'admin' },
       { id: 2, nome: 'Técnico Principal', login: 'tecnico', senha: '123456', nivel: 'tecnico' }
@@ -93,10 +96,12 @@ window.Auth = {
     const login = document.getElementById('loginUsername').value.trim();
     const senha = document.getElementById('loginPassword').value;
     const errDiv = document.getElementById('loginErrorMessage');
+
     if (errDiv) {
       errDiv.classList.add('hidden');
       errDiv.innerHTML = '';
     }
+
     if (!login || !senha) {
       if (errDiv) {
         errDiv.innerHTML = 'Preencha usuário e senha';
@@ -104,8 +109,10 @@ window.Auth = {
       }
       return;
     }
+
     const users = this.getUsers();
     const user = users.find(u => u.login === login && u.senha === senha);
+
     if (!user) {
       if (errDiv) {
         errDiv.innerHTML = 'Credenciais inválidas!';
@@ -114,6 +121,7 @@ window.Auth = {
       document.getElementById('loginPassword').value = '';
       return;
     }
+
     this.currentUser = user;
     localStorage.setItem('LiftOS_current_user', JSON.stringify(user));
     document.getElementById('loginScreen').style.display = 'none';
@@ -140,6 +148,7 @@ window.Auth = {
     if (session) {
       try {
         this.currentUser = JSON.parse(session);
+        if (!this.currentUser.nivel) this.currentUser.nivel = 'tecnico'; // fallback
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('appContainer').style.display = 'block';
         document.getElementById('currentUserName').innerHTML = window.esc(this.currentUser.nome);
@@ -207,7 +216,6 @@ window.Auth = {
       }
     }
 
-    // Mostrar/Esconder botões do menu
     const navAgendamentos = document.getElementById('navAgendamentos');
     if (navAgendamentos) navAgendamentos.style.display = this.can('agendamentos_visualizar') ? 'inline-flex' : 'none';
 
