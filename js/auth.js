@@ -91,4 +91,4 @@ window.Auth = {
       else badge.textContent = 'VISUALIZADOR';
     }
   }
-};s
+};
