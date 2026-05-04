@@ -35,6 +35,7 @@ window.PageLoader = {
   },
 
   initPage(pageName) {
+    // Remove modais residuais
     const modalCliente = document.getElementById('modalEscolhaCliente');
     if (modalCliente) modalCliente.remove();
     const modalEquip = document.getElementById('modalEquipamentosCliente');
@@ -77,7 +78,7 @@ window.PageLoader = {
   }
 };
 
-// Estado global
+// Estado global (compatível com o original)
 window.State = {
   clients: [],
   osHistory: [],
@@ -97,7 +98,7 @@ window.State = {
   lastSeenOSIds: []
 };
 
-// Storage
+// Storage (compatível com o original)
 window.Storage = {
   save(key, value) { try { localStorage.setItem('LiftOS_' + key, JSON.stringify(value)); } catch(e) {} },
   load(key) { try { const d = localStorage.getItem('LiftOS_' + key); return d ? JSON.parse(d) : null; } catch(e) { return null; } },
@@ -146,15 +147,7 @@ window.App = {
     if (window.Horas) window.Horas.initListeners();
     if (window.Notificacoes) window.Notificacoes.init();
 
-    // ========== INICIALIZAÇÃO DOS MÓDULOS ONLINE ==========
-    if (window.Auth.can('heartbeat') && window.Heartbeat) {
-      window.Heartbeat.start();
-    }
-    if (window.Auth.can('heartbeat') && window.OnlineUsers) {
-      window.OnlineUsers.start();
-    }
-    // =====================================================
-
+    // Sincronização
     if (window.Auth.can('sincronizar') && navigator.onLine) {
       setTimeout(() => window.GoogleSheets.fetchFromSheet(), 1500);
     }
