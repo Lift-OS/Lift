@@ -28,14 +28,15 @@ window.ClientesModule = {
   },
 
   init() {
-    setTimeout(() => {
-      window.State.clients.forEach(c => this.normalizarEquipamentos(c));
-      this.renderTable();
-      if (typeof this.updateStats === 'function') this.updateStats();
-      this.loadEventListeners();
-      this.removerModal();
-    }, 50);
-  },
+init() {
+  setTimeout(() => {
+    window.State.clients.forEach(c => this.normalizarEquipamentos(c));
+    this.renderTable();
+    if (typeof this.updateStats === 'function') this.updateStats();
+    this.loadEventListeners();
+    this.removerModal();
+  }, 200); // aumenta de 50 para 200ms
+}
 
   loadEventListeners() {
     const searchInput = document.getElementById('cad_searchInput');
