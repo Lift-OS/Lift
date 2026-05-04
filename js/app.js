@@ -43,46 +43,11 @@ window.PageLoader = {
     }
   },
 
-  initPage(pageName) {
-    // Remove modais residuais
-    const modalCliente = document.getElementById('modalEscolhaCliente');
-    if (modalCliente) modalCliente.remove();
-    const modalEquip = document.getElementById('modalEquipamentosCliente');
-    if (modalEquip) modalEquip.remove();
-
-    // Inicializa o módulo correspondente
-    switch (pageName) {
-      case 'os': if (window.OSModule) window.OSModule.init(); break;
-      case 'orcamento': if (window.OrcamentoModule) window.OrcamentoModule.init(); break;
-      case 'estoque': if (window.EstoqueModule) window.EstoqueModule.init(); break;
-      case 'clientes':
-        if (window.ClientesModule) {
-          setTimeout(() => window.ClientesModule.init(), 100);
-        }
-        break;
-      case 'historico': if (window.HistoricoModule) window.HistoricoModule.init(); break;
-      case 'checklist': if (window.ChecklistModule) window.ChecklistModule.init(); break;
-      case 'agendamentos': if (window.AgendamentosModule) window.AgendamentosModule.init(); break;
-      case 'jornada': if (window.JornadaModule) window.JornadaModule.init(); break;
-      case 'permissoes': if (window.PermissoesModule) window.PermissoesModule.init(); break;
-      case 'usuarios': if (window.UserManager) window.UserManager.init(); break;
-    }
-
-    // Restaura estado do orçamento e OS
-    if (pageName === 'orcamento' && window.OrcamentoModule?.restaurarEstado)
-      window.OrcamentoModule.restaurarEstado();
-    if (pageName === 'os' && window.OSModule?.restaurarEstado)
-      window.OSModule.restaurarEstado();
-
-    // Restaura dados do cliente (apenas OS e Orçamento)
-    if ((pageName === 'os' || pageName === 'orcamento') && window.ClientesModule?.tryRestaurarDados) {
-      const restoredKey = `restaurado_${pageName}`;
-      if (!sessionStorage.getItem(restoredKey)) {
-        window.ClientesModule.tryRestaurarDados();
-        sessionStorage.setItem(restoredKey, 'true');
-      }
-    }
+  case 'clientes':
+  if (window.ClientesModule) {
+    setTimeout(() => window.ClientesModule.init(), 100);
   }
+  break;
 };
 
 // Estado global
