@@ -4,27 +4,18 @@ window.PageLoader = {
   cache: {},
 
   async load(pageName, skipEvent = false) {
-    // Salva o estado do módulo atual ANTES de trocar de página
-    if (this.currentPage === 'orcamento' && window.OrcamentoModule?.salvarEstado)
-      window.OrcamentoModule.salvarEstado();
-    if (this.currentPage === 'os' && window.OSModule?.salvarEstado)
-      window.OSModule.salvarEstado();
-
     if (!skipEvent) {
       document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.classList.remove('active');
-        if (btn.getAttribute('data-page') === pageName)
-          btn.classList.add('active');
+        if (btn.getAttribute('data-page') === pageName) btn.classList.add('active');
       });
     }
     this.currentPage = pageName;
-
     if (this.cache[pageName]) {
       document.getElementById('pageContainer').innerHTML = this.cache[pageName];
       this.initPage(pageName);
       return;
     }
-
     try {
       const response = await fetch(`pages/${pageName}.html`);
       if (!response.ok) throw new Error(`Página ${pageName} não encontrada`);
@@ -43,75 +34,120 @@ window.PageLoader = {
     }
   },
 
-  case 'clientes':
-  if (window.ClientesModule) {
-    setTimeout(() => window.ClientesModule.init(), 100);
+  initPage(pageName) {
+    // Remove modais residuais
+    const modalCliente = document.getElementById('modalEscolhaCliente');
+    if (modalCliente) modalCliente.remove();
+    const modalEquip = document.getElementById('modalEquipamentosCliente');
+    if (modalEquip) modalEquip.remove();
+
+    switch (pageName) {
+      case 'os':
+        if (window.OSModule) window.OSModule.init();
+        break;
+      case 'orcamento':
+        if (window.OrcamentoModule) window.OrcamentoModule.init();
+        break;
+      case 'estoque':
+        if (window.EstoqueModule) window.EstoqueModule.init();
+        break;
+      case 'clientes':
+        if (window.ClientesModule) {
+          setTimeout(() => window.ClientesModule.init(), 100);
+        }
+        break;
+      case 'historico':
+        if (window.HistoricoModule) window.HistoricoModule.init();
+        break;
+      case 'checklist':
+        if (window.ChecklistModule) window.ChecklistModule.init();
+        break;
+      case 'agendamentos':
+        if (window.AgendamentosModule) window.AgendamentosModule.init();
+        break;
+      case 'jornada':
+        if (window.JornadaModule) window.JornadaModule.init();
+        break;
+      case 'permissoes':
+        if (window.PermissoesModule) window.PermissoesModule.init();
+        break;
+      case 'usuarios':
+        if (window.UserManager) window.UserManager.init();
+        break;
+    }
   }
-  break;
 };
 
-// Estado global
+// Estado global (compatível com o original)
 window.State = {
-  osCounter: 0,
-  orcCounter: 0,
-  osHistory: [],
   clients: [],
-  pecas: [],
-  movimentosEstoque: [],
+  osHistory: [],
   orcamentos: [],
   agendamentos: [],
-  hasUnsavedChanges: false
+  pecas: [],
+  movimentosEstoque: [],
+  currentStatus: 'abertura',
+  fotosServico: [],
+  fotoHorimetro: null,
+  fotosPendencias: [],
+  hasUnsavedChanges: false,
+  osCounter: 0,
+  orcCounter: 0,
+  onlineUsers: [],
+  notificacoes: [],
+  lastSeenOSIds: []
 };
 
-// Storage helper
+// Storage (compatível com o original)
 window.Storage = {
-  save(key, value) {
-    try { localStorage.setItem(`LiftOS_${key}`, JSON.stringify(value)); } catch(e) {}
-  },
-  load(key) {
-    try { const data = localStorage.getItem(`LiftOS_${key}`); return data ? JSON.parse(data) : null; } catch(e) { return null; }
-  },
-  saveCounter() { this.save('os_counter', window.State.osCounter); },
-  loadCounter() { window.State.osCounter = this.load('os_counter') || 0; },
-  saveOrcCounter() { this.save('orc_counter', window.State.orcCounter); },
-  loadOrcCounter() { window.State.orcCounter = this.load('orc_counter') || 0; },
-  saveOSHistory() { this.save('os_history', window.State.osHistory); },
-  loadOSHistory() { window.State.osHistory = this.load('os_history') || []; },
+  save(key, value) { try { localStorage.setItem('LiftOS_' + key, JSON.stringify(value)); } catch(e) {} },
+  load(key) { try { const d = localStorage.getItem('LiftOS_' + key); return d ? JSON.parse(d) : null; } catch(e) { return null; } },
   saveClients() { this.save('clientes', window.State.clients); },
   loadClients() { window.State.clients = this.load('clientes') || []; },
-  savePecas() { this.save('pecas', window.State.pecas); },
-  loadPecas() { window.State.pecas = this.load('pecas') || []; },
-  saveMovimentos() { this.save('movimentos', window.State.movimentosEstoque); },
-  loadMovimentos() { window.State.movimentosEstoque = this.load('movimentos') || []; },
+  saveOSHistory() { this.save('os_history', window.State.osHistory); },
+  loadOSHistory() { window.State.osHistory = this.load('os_history') || []; },
   saveOrcamentos() { this.save('orcamentos', window.State.orcamentos); },
   loadOrcamentos() { window.State.orcamentos = this.load('orcamentos') || []; },
   saveAgendamentos() { this.save('agendamentos', window.State.agendamentos); },
   loadAgendamentos() { window.State.agendamentos = this.load('agendamentos') || []; },
-  saveJornada(login, jornada) {
-    const todas = this.load('jornadas') || {};
-    todas[login] = jornada;
-    this.save('jornadas', todas);
-  },
-  loadJornada(login) {
-    const todas = this.load('jornadas') || {};
-    return todas[login] || null;
-  }
+  savePecas() { this.save('pecas', window.State.pecas); },
+  loadPecas() { window.State.pecas = this.load('pecas') || []; },
+  saveMovimentos() { this.save('movimentos', window.State.movimentosEstoque); },
+  loadMovimentos() { window.State.movimentosEstoque = this.load('movimentos') || []; },
+  saveNotificacoes() { this.save('notificacoes', window.State.notificacoes); },
+  loadNotificacoes() { window.State.notificacoes = this.load('notificacoes') || []; },
+  saveCounter() { this.save('os_counter', window.State.osCounter); },
+  loadCounter() { window.State.osCounter = this.load('os_counter') || 0; },
+  saveOrcCounter() { this.save('orc_counter', window.State.orcCounter); },
+  loadOrcCounter() { window.State.orcCounter = this.load('orc_counter') || 0; },
+  saveJornada(login, jornada) { const todas = this.load('jornadas') || {}; todas[login] = jornada; this.save('jornadas', todas); },
+  loadJornada(login) { const todas = this.load('jornadas') || {}; return todas[login] || null; }
 };
 
 // Inicialização do App
 window.App = {
   async init() {
-    window.Storage.loadCounter();
-    window.Storage.loadOrcCounter();
-    window.Storage.loadOSHistory();
-    window.Storage.loadClients();
-    window.Storage.loadPecas();
-    window.Storage.loadMovimentos();
-    window.Storage.loadOrcamentos();
-    window.Storage.loadAgendamentos();
+    Storage.loadCounter();
+    Storage.loadOrcCounter();
+    Storage.loadOSHistory();
+    Storage.loadClients();
+    Storage.loadPecas();
+    Storage.loadMovimentos();
+    Storage.loadOrcamentos();
+    Storage.loadAgendamentos();
+    Storage.loadNotificacoes();
 
-    await window.PageLoader.load('os');
+    await PageLoader.load('os');
 
+    // Inicializa módulos globais
+    if (window.ChecklistModule) window.ChecklistModule.init();
+    if (window.Signature) window.Signature.init();
+    if (window.SignatureOrc) window.SignatureOrc.init();
+    if (window.Fotos) window.Fotos.init();
+    if (window.Horas) window.Horas.initListeners();
+    if (window.Notificacoes) window.Notificacoes.init();
+
+    // Sincronização
     if (window.Auth.can('sincronizar') && navigator.onLine) {
       setTimeout(() => window.GoogleSheets.fetchFromSheet(), 1500);
     }
@@ -121,15 +157,9 @@ window.App = {
       if (window.Auth.can('sincronizar')) window.GoogleSheets.fetchFromSheet();
     });
     window.addEventListener('offline', () => showToast('Sem conexão', true));
-
-    // Novos módulos: online, heartbeat, notificações
-    if (window.Auth.can('heartbeat') && window.Heartbeat) window.Heartbeat.start();
-    if (window.Auth.can('heartbeat') && window.OnlineUsers) window.OnlineUsers.start();
-    if (window.Notificacoes) window.Notificacoes.init();
   }
 };
 
-// Inicialização automática após login
 document.addEventListener('DOMContentLoaded', () => {
   if (!window.Auth.checkSession()) {
     document.getElementById('loginScreen').style.display = 'flex';
