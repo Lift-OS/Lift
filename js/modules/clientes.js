@@ -1,4 +1,4 @@
-// modules/clientes.js - Módulo de Clientes (completo e corrigido)
+// modules/clientes.js - Módulo de Clientes (completo e estável)
 window.ClientesModule = {
   editingId: null,
   modalEscolha: null,
@@ -28,15 +28,14 @@ window.ClientesModule = {
   },
 
   init() {
-init() {
-  setTimeout(() => {
-    window.State.clients.forEach(c => this.normalizarEquipamentos(c));
-    this.renderTable();
-    if (typeof this.updateStats === 'function') this.updateStats();
-    this.loadEventListeners();
-    this.removerModal();
-  }, 200); // aumenta de 50 para 200ms
-}
+    setTimeout(() => {
+      window.State.clients.forEach(c => this.normalizarEquipamentos(c));
+      this.renderTable();
+      if (typeof this.updateStats === 'function') this.updateStats();
+      this.loadEventListeners();
+      this.removerModal();
+    }, 200);
+  },
 
   loadEventListeners() {
     const searchInput = document.getElementById('cad_searchInput');
@@ -85,7 +84,7 @@ init() {
     if (!tbody) return;
     tbody.innerHTML = '';
     if (!list.length) {
-      tbody.innerHTML = '</td><td colspan="4" class="text-center p-4 text-[var(--muted)]">Nenhum cliente cadastrado</td></td>';
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-[var(--muted)]">Nenhum cliente cadastrado</td></tr>';
       return;
     }
     const podeEditar = window.Auth.can('clientes_editar');
@@ -283,15 +282,9 @@ init() {
   },
 
   async save() {
-    if (!window.Auth.can('clientes_cadastrar')) {
-      showToast('Apenas administrador pode cadastrar clientes', true);
-      return;
-    }
+    if (!window.Auth.can('clientes_cadastrar')) { showToast('Apenas administrador pode cadastrar clientes', true); return; }
     const nome = document.getElementById('cad_nome')?.value.trim();
-    if (!nome) {
-      showToast('Nome do cliente é obrigatório', true);
-      return;
-    }
+    if (!nome) { showToast('Nome do cliente é obrigatório', true); return; }
     const equipamentos = [];
     const equipItems = document.querySelectorAll('#equipamentosList .equip-item');
     equipItems.forEach(item => {
@@ -336,16 +329,11 @@ init() {
     this.clearForm();
     this.renderTable();
     this.updateStats();
-    if (window.GoogleSheets && window.Auth.can('sincronizar')) {
-      await window.GoogleSheets.syncSingleCliente(cliente);
-    }
+    if (window.GoogleSheets && window.Auth.can('sincronizar')) await window.GoogleSheets.syncSingleCliente(cliente);
   },
 
   edit(id) {
-    if (!window.Auth.can('clientes_editar')) {
-      showToast('Apenas administrador pode editar', true);
-      return;
-    }
+    if (!window.Auth.can('clientes_editar')) { showToast('Apenas administrador pode editar', true); return; }
     const cliente = window.State.clients.find(c => c.id === id);
     if (!cliente) return;
     this.normalizarEquipamentos(cliente);
@@ -368,10 +356,7 @@ init() {
   },
 
   delete(id) {
-    if (!window.Auth.can('clientes_excluir')) {
-      showToast('Apenas administrador pode excluir', true);
-      return;
-    }
+    if (!window.Auth.can('clientes_excluir')) { showToast('Apenas administrador pode excluir', true); return; }
     if (!confirm('Excluir este cliente permanentemente?')) return;
     window.State.clients = window.State.clients.filter(c => c.id !== id);
     window.Storage.saveClients();
@@ -380,20 +365,11 @@ init() {
     showToast('Cliente excluído');
   },
 
-  cancelEdit() {
-    this.editingId = null;
-    this.clearForm();
-    document.getElementById('cad_btnCancelar').style.display = 'none';
-  },
-
+  cancelEdit() { this.editingId = null; this.clearForm(); document.getElementById('cad_btnCancelar').style.display = 'none'; },
   clearForm() {
     const fields = ['cad_nome','cad_cnpj','cad_endereco','cad_cidade','cad_telefone','cad_whatsapp','cad_email','cad_responsavel_nome','cad_responsavel_telefone'];
-    fields.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = '';
-    });
-    const container = document.getElementById('equipamentosList');
-    if (container) container.innerHTML = '';
+    fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const container = document.getElementById('equipamentosList'); if (container) container.innerHTML = '';
   },
 
   adicionarCampoEquipamento(marca, modelo, serie, qtd, combustivel) {
@@ -435,17 +411,12 @@ init() {
     `;
     const marcaSelect = div.querySelector('.equip-marca');
     const outraDiv = div.querySelector('.outra-marca-container');
-    marcaSelect.onchange = () => {
-      outraDiv.style.display = marcaSelect.value === 'OUTRA' ? 'block' : 'none';
-    };
+    marcaSelect.onchange = () => { outraDiv.style.display = marcaSelect.value === 'OUTRA' ? 'block' : 'none'; };
     container.appendChild(div);
   },
 
   exportCSV() {
-    if (!window.Auth.can('clientes_exportar_csv')) {
-      showToast('Apenas administrador pode exportar', true);
-      return;
-    }
+    if (!window.Auth.can('clientes_exportar_csv')) { showToast('Apenas administrador pode exportar', true); return; }
     let csv = "Nome,CNPJ,Endereco,Cidade,Telefone,WhatsApp,E-mail,Responsavel,TelResp,Marcas\n";
     window.State.clients.forEach(c => {
       const equipArray = Array.isArray(c.equipamentos) ? c.equipamentos : [];
@@ -461,10 +432,7 @@ init() {
   },
 
   importCSV() {
-    if (!window.Auth.can('clientes_importar_csv')) {
-      showToast('Apenas administrador pode importar', true);
-      return;
-    }
+    if (!window.Auth.can('clientes_importar_csv')) { showToast('Apenas administrador pode importar', true); return; }
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.csv';
