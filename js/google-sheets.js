@@ -1,6 +1,6 @@
 // google-sheets.js - Baseado no original funcional
 window.GoogleSheets = {
-  webAppUrl: 'https://script.google.com/macros/s/AKfycbzchqX9_PRTvn_8tW5qQ81b0ZoKsDv6BNw0io7SjIFGC_jky0EfSMMYXfY4os4pWOEz/exec', // ← Substitua pela URL correta
+  webAppUrl: 'https://script.google.com/macros/s/AKfycbzpdVuPW9kUZFJzEHf2MY6EpoFKmNYoEerW7tp1m64PxMZSNQlLCpB2KB4s_TADEejh/exec', // ← Substitua pela URL correta
 
   async postData(action, data) {
     try {
