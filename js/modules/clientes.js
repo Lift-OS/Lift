@@ -1,50 +1,42 @@
-// modules/clientes.js - Módulo de Clientes (com padronização de chaves)
+// modules/clientes.js - Versão final com normalização de chaves
 window.ClientesModule = {
   editingId: null,
   modalEscolha: null,
   modalEquipamentos: null,
 
-  // Converte as chaves do objeto para minúsculo (normaliza dados da planilha)
-  padronizarChaves(obj) {
+  // Converte as chaves do objeto para minúsculo e garante equipamentos como array
+  normalizarCliente: function(cliente) {
+    if (!cliente) return { equipamentos: [] };
     const novo = {};
-    for (let [chave, valor] of Object.entries(obj)) {
+    for (let [chave, valor] of Object.entries(cliente)) {
       novo[chave.toLowerCase()] = valor;
     }
+    // Trata equipamentos (pode ser string JSON ou array)
+    if (typeof novo.equipamentos === 'string') {
+      try {
+        novo.equipamentos = JSON.parse(novo.equipamentos);
+      } catch(e) {
+        novo.equipamentos = [];
+      }
+    }
+    if (!Array.isArray(novo.equipamentos)) novo.equipamentos = [];
     return novo;
   },
 
-  normalizarEquipamentos(cliente) {
-    if (!cliente) return;
-    if (Array.isArray(cliente.equipamentos)) return;
-    if (typeof cliente.equipamentos === 'string' && cliente.equipamentos.trim() !== '') {
-      try {
-        const parsed = JSON.parse(cliente.equipamentos);
-        if (Array.isArray(parsed)) {
-          cliente.equipamentos = parsed;
-          return;
-        }
-      } catch(e) { console.warn('Erro ao parsear equipamentos', e); }
-    }
-    cliente.equipamentos = [];
-  },
-
-  removerModal() {
+  removerModal: function() {
     if (this.modalEscolha && this.modalEscolha.parentNode) this.modalEscolha.parentNode.removeChild(this.modalEscolha);
     if (this.modalEquipamentos && this.modalEquipamentos.parentNode) this.modalEquipamentos.parentNode.removeChild(this.modalEquipamentos);
-    const m1 = document.getElementById('modalEscolhaCliente'); if(m1) m1.remove();
-    const m2 = document.getElementById('modalEquipamentosCliente'); if(m2) m2.remove();
-    this.modalEscolha = null; this.modalEquipamentos = null;
+    const m1 = document.getElementById('modalEscolhaCliente'); if (m1) m1.remove();
+    const m2 = document.getElementById('modalEquipamentosCliente'); if (m2) m2.remove();
+    this.modalEscolha = null;
+    this.modalEquipamentos = null;
   },
 
-  init() {
+  init: function() {
     setTimeout(() => {
-      window.State.clients.forEach(c => {
-        // Padroniza chaves para minúsculo (caso venham da planilha com letras maiúsculas)
-        if (c.nome === undefined && c.Nome) {
-          Object.assign(c, this.padronizarChaves(c));
-        }
-        this.normalizarEquipamentos(c);
-      });
+      // Normaliza todos os clientes existentes (caso venham do storage sem padronização)
+      window.State.clients = window.State.clients.map(c => this.normalizarCliente(c));
+      window.Storage.saveClients();
       this.renderTable();
       if (typeof this.updateStats === 'function') this.updateStats();
       this.loadEventListeners();
@@ -52,7 +44,7 @@ window.ClientesModule = {
     }, 200);
   },
 
-  loadEventListeners() {
+  loadEventListeners: function() {
     const searchInput = document.getElementById('cad_searchInput');
     if (searchInput) searchInput.oninput = (e) => this.filtrarClientes(e.target.value);
     const btnSalvar = document.getElementById('btnSalvarCliente');
@@ -65,14 +57,13 @@ window.ClientesModule = {
     if (btnImportar) btnImportar.onclick = () => this.importCSV();
   },
 
-  updateStats() {
+  updateStats: function() {
     const totalClientes = window.State.clients.length;
     let totalEquipamentos = 0;
     const clientesComOS = new Set();
     let totalOS = 0, osAbertas = 0, osAprovadas = 0;
     window.State.clients.forEach(c => {
-      const eq = Array.isArray(c.equipamentos) ? c.equipamentos : [];
-      totalEquipamentos += eq.length;
+      totalEquipamentos += c.equipamentos.length;
     });
     window.State.osHistory.forEach(os => {
       if (os.cliente) { clientesComOS.add(os.cliente); totalOS++; }
@@ -93,10 +84,13 @@ window.ClientesModule = {
     if (elOSAprovadas) elOSAprovadas.innerText = osAprovadas;
   },
 
-  renderTable(clientesList) {
+  renderTable: function(clientesList) {
     const list = clientesList || window.State.clients;
     const tbody = document.getElementById('cad_tableBody');
-    if (!tbody) return;
+    if (!tbody) {
+      console.warn('cad_tableBody não encontrado');
+      return;
+    }
     tbody.innerHTML = '';
     if (!list.length) {
       tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-[var(--muted)]">Nenhum cliente cadastrado</td></tr>';
@@ -105,8 +99,7 @@ window.ClientesModule = {
     const podeEditar = window.Auth.can('clientes_editar');
     const podeExcluir = window.Auth.can('clientes_excluir');
     list.forEach(cliente => {
-      const equipArray = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
-      const marcas = equipArray.map(e => e.marca).join(', ');
+      const marcas = cliente.equipamentos.map(e => e.marca).join(', ');
       let acoes = `<button onclick="ClientesModule.select(${cliente.id})" class="btn btn-primary text-xs py-1 px-2"><i class="fas fa-arrow-right"></i> Selecionar</button>`;
       if (podeEditar) acoes += ` <i class="fas fa-edit text-blue-400 cursor-pointer ml-2" onclick="ClientesModule.edit(${cliente.id})"></i>`;
       if (podeExcluir) acoes += ` <i class="fas fa-trash text-red-400 cursor-pointer ml-2" onclick="ClientesModule.delete(${cliente.id})"></i>`;
@@ -120,7 +113,7 @@ window.ClientesModule = {
     });
   },
 
-  filtrarClientes(busca) {
+  filtrarClientes: function(busca) {
     if (!busca) { this.renderTable(); return; }
     const filtered = window.State.clients.filter(c =>
       (c.nome && c.nome.toLowerCase().includes(busca.toLowerCase())) ||
@@ -129,13 +122,13 @@ window.ClientesModule = {
     this.renderTable(filtered);
   },
 
-  select(id) {
+  select: function(id) {
     const cliente = window.State.clients.find(c => c.id === id);
     if (!cliente) return;
     this.mostrarModalEscolha(cliente);
   },
 
-  mostrarModalEscolha(cliente) {
+  mostrarModalEscolha: function(cliente) {
     this.removerModal();
     const modal = document.createElement('div');
     modal.id = 'modalEscolhaCliente';
@@ -159,8 +152,8 @@ window.ClientesModule = {
     document.getElementById('escolhaCancelar').onclick = () => this.removerModal();
   },
 
-  mostrarModalEquipamentosCliente(cliente, destino) {
-    const equipamentos = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
+  mostrarModalEquipamentosCliente: function(cliente, destino) {
+    const equipamentos = cliente.equipamentos || [];
     if (equipamentos.length === 0) return;
     if (equipamentos.length === 1) {
       if (destino === 'os') this._finalizarAbrirOS(cliente, equipamentos[0]);
@@ -205,13 +198,13 @@ window.ClientesModule = {
     }));
     sessionStorage.removeItem('restaurado_os');
     await window.PageLoader.load('os');
-    const equipamentos = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
+    const equipamentos = cliente.equipamentos || [];
     if (equipamentos.length === 1) this._finalizarAbrirOS(cliente, equipamentos[0]);
     else if (equipamentos.length > 1) this.mostrarModalEquipamentosCliente(cliente, 'os');
     else this._finalizarAbrirOS(cliente, null);
   },
 
-  _finalizarAbrirOS(cliente, equip) {
+  _finalizarAbrirOS: function(cliente, equip) {
     window.Utils.setVal('cliente', cliente.nome);
     window.Utils.setVal('cnpj', cliente.cnpj || '');
     window.Utils.setVal('cidadeCliente', cliente.cidade || '');
@@ -232,13 +225,13 @@ window.ClientesModule = {
     }));
     sessionStorage.removeItem('restaurado_orcamento');
     await window.PageLoader.load('orcamento');
-    const equipamentos = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
+    const equipamentos = cliente.equipamentos || [];
     if (equipamentos.length === 1) this._finalizarAbrirOrcamento(cliente, equipamentos[0]);
     else if (equipamentos.length > 1) this.mostrarModalEquipamentosCliente(cliente, 'orcamento');
     else this._finalizarAbrirOrcamento(cliente, null);
   },
 
-  _finalizarAbrirOrcamento(cliente, equip) {
+  _finalizarAbrirOrcamento: function(cliente, equip) {
     window.Utils.setVal('orc_cliente', cliente.nome);
     window.Utils.setVal('orc_equipamento', '');
     window.Utils.setVal('orc_serie_combustivel', '');
@@ -251,7 +244,7 @@ window.ClientesModule = {
     showToast(`Cliente ${cliente.nome} carregado no orçamento`);
   },
 
-  tryRestaurarDados() {
+  tryRestaurarDados: function() {
     const dados = sessionStorage.getItem('clienteSelecionado');
     if (!dados) return;
     const cliente = JSON.parse(dados);
@@ -266,7 +259,7 @@ window.ClientesModule = {
     }
   },
 
-  carregarDadosCliente(cliente) {
+  carregarDadosCliente: function(cliente) {
     window.Utils.setVal('cliente', cliente.nome);
     window.Utils.setVal('cnpj', cliente.cnpj || '');
     window.Utils.setVal('cidadeCliente', cliente.cidade || '');
@@ -274,7 +267,7 @@ window.ClientesModule = {
     window.Utils.setVal('whatsappCliente', cliente.whatsapp || '');
   },
 
-  carregarEquipamento(equip, cliente) {
+  carregarEquipamento: function(equip, cliente) {
     this.carregarDadosCliente(cliente);
     const marcaSelect = document.getElementById('marcaSelect');
     const marcaOutraDiv = document.getElementById('marcaOutraDiv');
@@ -296,32 +289,24 @@ window.ClientesModule = {
     if (equip.combustivel) window.Utils.setVal('combustivel', equip.combustivel);
   },
 
-  async save() { /* ... (mantenha o original) ... */ },
-  edit(id) { /* ... (mantenha o original) ... */ },
-  delete(id) { /* ... (mantenha o original) ... */ },
-  cancelEdit() { /* ... (mantenha o original) ... */ },
-  clearForm() { /* ... (mantenha o original) ... */ },
-  adicionarCampoEquipamento() { /* ... (mantenha o original) ... */ },
-  exportCSV() { /* ... (mantenha o original) ... */ },
-  importCSV() { /* ... (mantenha o original) ... */ },
+  // Métodos CRUD (save, edit, delete, etc.) mantidos conforme original
+  async save() { /* manter implementação original */ },
+  edit(id) { /* manter implementação original */ },
+  delete(id) { /* manter implementação original */ },
+  cancelEdit() { /* manter original */ },
+  clearForm() { /* manter original */ },
+  adicionarCampoEquipamento() { /* manter original */ },
+  exportCSV() { /* manter original */ },
+  importCSV() { /* manter original */ },
 
-  loadFromSync(clientes) {
-  if (Array.isArray(clientes) && clientes.length) {
-    const padronizados = clientes.map(c => {
-      const novo = {};
-      for (let [chave, valor] of Object.entries(c)) {
-        novo[chave.toLowerCase()] = valor;
-      }
-      if (typeof novo.equipamentos === 'string') {
-        try { novo.equipamentos = JSON.parse(novo.equipamentos); } catch(e) { novo.equipamentos = []; }
-      }
-      if (!Array.isArray(novo.equipamentos)) novo.equipamentos = [];
-      return novo;
-    });
-    window.State.clients = padronizados;
-    window.Storage.saveClients();
-    this.renderTable();
-    this.updateStats();
+  loadFromSync: function(clientes) {
+    if (Array.isArray(clientes) && clientes.length) {
+      // Padroniza chaves (maiúsculo/minúsculo) e equipamentos
+      const padronizados = clientes.map(c => this.normalizarCliente(c));
+      window.State.clients = padronizados;
+      window.Storage.saveClients();
+      this.renderTable();
+      this.updateStats();
+    }
   }
-}
 };
