@@ -78,20 +78,22 @@
 
           <!-- USUÁRIOS ONLINE -->
           <div class="online-widget" id="onlineWidget">
-            <div class="online-badge" id="onlineBadge" onclick="OnlineUsers.toggleDropdown()">
-              <i class="fas fa-wifi" style="font-size:10px"></i>
-              <span class="online-label-text">Online</span>
-              <span class="online-count" id="onlineCount">0</span>
-              <i class="fas fa-chevron-down" style="font-size:8px;color:var(--muted)"></i>
-            </div>
-            <div class="online-dropdown" id="onlineDropdown">
-              <div class="online-dropdown-header">
-                <span><i class="fas fa-signal"></i> Usuários</span>
-                <button class="refresh-btn" onclick="event.stopPropagation();OnlineUsers.fetch()"><i class="fas fa-sync-alt"></i></button>
-              </div>
-              <div id="onlineUserList"></div>
-            </div>
-          </div>
+  <div class="online-badge" id="onlineBadge" onclick="OnlineUsers.toggleDropdown()">
+    <i class="fas fa-wifi"></i>
+    <span class="online-label-text">Online</span>
+    <span class="online-count" id="onlineCount">0</span>
+    <i class="fas fa-chevron-down"></i>
+  </div>
+  <div class="online-dropdown" id="onlineDropdown">
+    <div class="online-dropdown-header">
+      <span><i class="fas fa-signal"></i> Usuários</span>
+      <button class="refresh-btn" onclick="event.stopPropagation();OnlineUsers.fetch()">
+        <i class="fas fa-sync-alt"></i>
+      </button>
+    </div>
+    <div id="onlineUserList"></div>
+  </div>
+</div>
 
           <!-- ÁREA DO USUÁRIO -->
           <div class="user-area flex items-center gap-2 bg-[var(--bg-secondary)] px-4 py-2 rounded-full">
