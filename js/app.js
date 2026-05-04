@@ -5,32 +5,26 @@ window.PageLoader = {
 
   async load(pageName, skipEvent = false) {
     // Salva o estado do módulo atual ANTES de trocar de página
-    if (this.currentPage === 'orcamento' && window.OrcamentoModule && window.OrcamentoModule.salvarEstado) {
+    if (this.currentPage === 'orcamento' && window.OrcamentoModule?.salvarEstado)
       window.OrcamentoModule.salvarEstado();
-    }
-    if (this.currentPage === 'os' && window.OSModule && window.OSModule.salvarEstado) {
+    if (this.currentPage === 'os' && window.OSModule?.salvarEstado)
       window.OSModule.salvarEstado();
-    }
 
     if (!skipEvent) {
       document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.classList.remove('active');
-        if (btn.getAttribute('data-page') === pageName) {
+        if (btn.getAttribute('data-page') === pageName)
           btn.classList.add('active');
-        }
       });
     }
-
     this.currentPage = pageName;
 
-    // Se já está no cache, mostra
     if (this.cache[pageName]) {
       document.getElementById('pageContainer').innerHTML = this.cache[pageName];
       this.initPage(pageName);
       return;
     }
 
-    // Carrega o HTML da página
     try {
       const response = await fetch(`pages/${pageName}.html`);
       if (!response.ok) throw new Error(`Página ${pageName} não encontrada`);
@@ -45,75 +39,52 @@ window.PageLoader = {
           <i class="fas fa-exclamation-triangle text-4xl mb-3"></i>
           <p>Erro ao carregar página: ${pageName}</p>
           <button onclick="PageLoader.load('os')" class="btn btn-primary mt-4">Voltar para OS</button>
-        </div>
-      `;
+        </div>`;
     }
   },
 
   initPage(pageName) {
-  // Remove modais residuais
-  const modalCliente = document.getElementById('modalEscolhaCliente');
-  if (modalCliente) modalCliente.remove();
-  const modalEquip = document.getElementById('modalEquipamentosCliente');
-  if (modalEquip) modalEquip.remove();
+    // Remove modais residuais
+    const modalCliente = document.getElementById('modalEscolhaCliente');
+    if (modalCliente) modalCliente.remove();
+    const modalEquip = document.getElementById('modalEquipamentosCliente');
+    if (modalEquip) modalEquip.remove();
 
-  // Inicializa o módulo correspondente
-  switch (pageName) {
-    case 'os':
-      if (window.OSModule) window.OSModule.init();
-      break;
-    case 'orcamento':
-      if (window.OrcamentoModule) window.OrcamentoModule.init();
-      break;
-    case 'estoque':
-      if (window.EstoqueModule) window.EstoqueModule.init();
-      break;
-    case 'clientes':
-      if (window.ClientesModule) {
-        // Pequeno atraso para garantir que o DOM da página foi carregado
-        setTimeout(() => {
-          window.ClientesModule.init();
-        }, 100);
+    // Inicializa o módulo correspondente
+    switch (pageName) {
+      case 'os': if (window.OSModule) window.OSModule.init(); break;
+      case 'orcamento': if (window.OrcamentoModule) window.OrcamentoModule.init(); break;
+      case 'estoque': if (window.EstoqueModule) window.EstoqueModule.init(); break;
+      case 'clientes':
+        if (window.ClientesModule) {
+          setTimeout(() => window.ClientesModule.init(), 100);
+        }
+        break;
+      case 'historico': if (window.HistoricoModule) window.HistoricoModule.init(); break;
+      case 'checklist': if (window.ChecklistModule) window.ChecklistModule.init(); break;
+      case 'agendamentos': if (window.AgendamentosModule) window.AgendamentosModule.init(); break;
+      case 'jornada': if (window.JornadaModule) window.JornadaModule.init(); break;
+      case 'permissoes': if (window.PermissoesModule) window.PermissoesModule.init(); break;
+      case 'usuarios': if (window.UserManager) window.UserManager.init(); break;
+    }
+
+    // Restaura estado do orçamento e OS
+    if (pageName === 'orcamento' && window.OrcamentoModule?.restaurarEstado)
+      window.OrcamentoModule.restaurarEstado();
+    if (pageName === 'os' && window.OSModule?.restaurarEstado)
+      window.OSModule.restaurarEstado();
+
+    // Restaura dados do cliente (apenas OS e Orçamento)
+    if ((pageName === 'os' || pageName === 'orcamento') && window.ClientesModule?.tryRestaurarDados) {
+      const restoredKey = `restaurado_${pageName}`;
+      if (!sessionStorage.getItem(restoredKey)) {
+        window.ClientesModule.tryRestaurarDados();
+        sessionStorage.setItem(restoredKey, 'true');
       }
-      break;
-    case 'historico':
-      if (window.HistoricoModule) window.HistoricoModule.init();
-      break;
-    case 'checklist':
-      if (window.ChecklistModule) window.ChecklistModule.init();
-      break;
-    case 'agendamentos':
-      if (window.AgendamentosModule) window.AgendamentosModule.init();
-      break;
-    case 'jornada':
-      if (window.JornadaModule) window.JornadaModule.init();
-      break;
-    case 'permissoes':
-      if (window.PermissoesModule) window.PermissoesModule.init();
-      break;
-    case 'usuarios':
-      if (window.UserManager) window.UserManager.init();
-      break;
-  }
-
-  // Restaura estado do orçamento (se houver)
-  if (pageName === 'orcamento' && window.OrcamentoModule && window.OrcamentoModule.restaurarEstado) {
-    window.OrcamentoModule.restaurarEstado();
-  }
-  if (pageName === 'os' && window.OSModule && window.OSModule.restaurarEstado) {
-    window.OSModule.restaurarEstado();
-  }
-
-  // Restaura dados do cliente (apenas OS e Orçamento)
-  if ((pageName === 'os' || pageName === 'orcamento') && window.ClientesModule && window.ClientesModule.tryRestaurarDados) {
-    const restoredKey = `restaurado_${pageName}`;
-    if (!sessionStorage.getItem(restoredKey)) {
-      window.ClientesModule.tryRestaurarDados();
-      sessionStorage.setItem(restoredKey, 'true');
     }
   }
-}
 };
+
 // Estado global
 window.State = {
   osCounter: 0,
@@ -151,8 +122,15 @@ window.Storage = {
   loadOrcamentos() { window.State.orcamentos = this.load('orcamentos') || []; },
   saveAgendamentos() { this.save('agendamentos', window.State.agendamentos); },
   loadAgendamentos() { window.State.agendamentos = this.load('agendamentos') || []; },
-  saveJornada(login, jornada) { const todas = this.load('jornadas') || {}; todas[login] = jornada; this.save('jornadas', todas); },
-  loadJornada(login) { const todas = this.load('jornadas') || {}; return todas[login] || null; }
+  saveJornada(login, jornada) {
+    const todas = this.load('jornadas') || {};
+    todas[login] = jornada;
+    this.save('jornadas', todas);
+  },
+  loadJornada(login) {
+    const todas = this.load('jornadas') || {};
+    return todas[login] || null;
+  }
 };
 
 // Inicialização do App
@@ -166,29 +144,23 @@ window.App = {
     window.Storage.loadMovimentos();
     window.Storage.loadOrcamentos();
     window.Storage.loadAgendamentos();
+
     await window.PageLoader.load('os');
+
     if (window.Auth.can('sincronizar') && navigator.onLine) {
       setTimeout(() => window.GoogleSheets.fetchFromSheet(), 1500);
     }
+
     window.addEventListener('online', () => {
       showToast('Conexão restaurada');
       if (window.Auth.can('sincronizar')) window.GoogleSheets.fetchFromSheet();
     });
     window.addEventListener('offline', () => showToast('Sem conexão', true));
 
-    // ========== NOVOS MÓDULOS (online, heartbeat, notificações) ==========
-    // Inicia heartbeat (para aparecer como online)
-    if (window.Auth.can('heartbeat') && window.Heartbeat) {
-      window.Heartbeat.start();
-    }
-    // Inicia widget de usuários online
-    if (window.Auth.can('heartbeat') && window.OnlineUsers) {
-      window.OnlineUsers.start();
-    }
-    // Inicia notificações
-    if (window.Notificacoes) {
-      window.Notificacoes.init();
-    }
+    // Novos módulos: online, heartbeat, notificações
+    if (window.Auth.can('heartbeat') && window.Heartbeat) window.Heartbeat.start();
+    if (window.Auth.can('heartbeat') && window.OnlineUsers) window.OnlineUsers.start();
+    if (window.Notificacoes) window.Notificacoes.init();
   }
 };
 
