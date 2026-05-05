@@ -34,6 +34,7 @@
       <div><label class="block text-xs text-[var(--muted)] mb-1">Preço Venda (R$)</label><input type="number" id="est_preco_venda" class="form-input" step="0.01" value="0"></div>
       <div><label class="block text-xs text-[var(--muted)] mb-1">Aplicação</label><input type="text" id="est_aplicacao" class="form-input" placeholder="Toyota 8FG, Clark C25..."></div>
       <div><button type="button" onclick="EstoqueModule.calcularPrecoVenda()" class="btn btn-secondary text-sm w-full"><i class="fas fa-calculator"></i> Calcular Venda</button></div>
+      <div></div>
     </div>
     
     <div class="flex gap-3 flex-wrap">
@@ -75,7 +76,7 @@
     <div class="overflow-x-auto">
       <table class="table-os w-full">
         <thead class="bg-[var(--bg-secondary)]">
-          <tr><th class="p-2 text-left">Código</th><th class="p-2 text-left">Descrição</th><th class="p-2 text-left">Cat.</th><th class="p-2 text-right">Qtd</th><th class="p-2 text-right">Min.</th><th class="p-2 text-right">P. Venda</th><th class="p-2 text-left">Status</th><th class="p-2 text-left">Ações</th><tr>
+          <tr><th class="p-2 text-left">Código</th><th class="p-2 text-left">Descrição</th><th class="p-2 text-left">Cat.</th><th class="p-2 text-right">Qtd</th><th class="p-2 text-right">Min.</th><th class="p-2 text-right">P. Venda</th><th class="p-2 text-left">Status</th><th class="p-2 text-left">Ações</th></tr>
         </thead>
         <tbody id="estPecasBody"></tbody>
       </table>
