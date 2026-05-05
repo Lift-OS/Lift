@@ -1,4 +1,4 @@
-// modules/estoque.js - Módulo de Estoque (completo e estável)
+// modules/estoque.js - Módulo de Estoque
 window.EstoqueModule = {
   editingId: null,
 
@@ -11,17 +11,8 @@ window.EstoqueModule = {
     this.loadEventListeners();
   },
 
-  calcularPrecoVenda() {
-    const custo = parseFloat(document.getElementById('est_preco_custo')?.value) || 0;
-    const margem = parseFloat(document.getElementById('est_margem')?.value) || 0;
-    const venda = custo * (1 + margem / 100);
-    document.getElementById('est_preco_venda').value = venda.toFixed(2);
-    if (margem > 0 && custo > 0) {
-      showToast(`Preço de venda calculado: R$ ${venda.toFixed(2)}`);
-    }
-  },
-
   loadEventListeners() {
+    // Botões
     const btnSalvar = document.getElementById('btnEstSalvar');
     if (btnSalvar) btnSalvar.onclick = () => this.salvarPeca();
 
@@ -31,9 +22,11 @@ window.EstoqueModule = {
     const btnRegistrarMov = document.getElementById('btnEstRegistrarMov');
     if (btnRegistrarMov) btnRegistrarMov.onclick = () => this.registrarMovimento();
 
+    // Select de peça para mostrar estoque atual
     const selectPeca = document.getElementById('mov_peca');
     if (selectPeca) selectPeca.onchange = () => this.mostrarEstoqueAtual();
 
+    // Filtros
     const searchInput = document.getElementById('estSearch');
     if (searchInput) searchInput.oninput = () => this.renderPecas();
 
@@ -54,9 +47,6 @@ window.EstoqueModule = {
   salvarPeca() {
     const codigo = document.getElementById('est_codigo')?.value.trim();
     const descricao = document.getElementById('est_descricao')?.value.trim();
-    const custo = parseFloat(document.getElementById('est_preco_custo')?.value) || 0;
-    const margem = parseFloat(document.getElementById('est_margem')?.value) || 30;
-    const venda = parseFloat(document.getElementById('est_preco_venda')?.value) || (custo * (1 + margem / 100));
 
     if (!codigo) {
       showToast('Código é obrigatório', true);
@@ -75,23 +65,25 @@ window.EstoqueModule = {
       unidade: document.getElementById('est_unidade')?.value || 'un',
       quantidade: parseInt(document.getElementById('est_qtd')?.value) || 0,
       minimo: parseInt(document.getElementById('est_minimo')?.value) || 2,
-      preco_custo: custo,
-      margem: margem,
-      preco_venda: venda,
+      preco_custo: parseFloat(document.getElementById('est_preco_custo')?.value) || 0,
+      preco_venda: parseFloat(document.getElementById('est_preco_venda')?.value) || 0,
       aplicacao: document.getElementById('est_aplicacao')?.value || ''
     };
 
-    const editId = parseInt(document.getElementById('est_editId')?.value);
-    if (editId) {
-      const index = window.State.pecas.findIndex(p => p.id === editId);
-      if (index >= 0) window.State.pecas[index] = peca;
-      showToast('Peça atualizada');
-    } else {
+    // Verifica se código já existe (apenas para novas peças)
+    if (!this.editingId) {
       const existing = window.State.pecas.find(p => p.codigo === codigo);
       if (existing) {
         showToast('Código já existe', true);
         return;
       }
+    }
+
+    if (this.editingId) {
+      const index = window.State.pecas.findIndex(p => p.id === this.editingId);
+      if (index >= 0) window.State.pecas[index] = peca;
+      showToast('Peça atualizada');
+    } else {
       window.State.pecas.push(peca);
       showToast('Peça cadastrada');
     }
@@ -120,7 +112,6 @@ window.EstoqueModule = {
     document.getElementById('est_qtd').value = peca.quantidade;
     document.getElementById('est_minimo').value = peca.minimo;
     document.getElementById('est_preco_custo').value = peca.preco_custo;
-    document.getElementById('est_margem').value = peca.margem || 30;
     document.getElementById('est_preco_venda').value = peca.preco_venda;
     document.getElementById('est_aplicacao').value = peca.aplicacao || '';
 
@@ -141,7 +132,6 @@ window.EstoqueModule = {
     document.getElementById('est_qtd').value = '0';
     document.getElementById('est_minimo').value = '2';
     document.getElementById('est_preco_custo').value = '0';
-    document.getElementById('est_margem').value = '30';
     document.getElementById('est_preco_venda').value = '0';
     document.getElementById('est_aplicacao').value = '';
     document.getElementById('est_categoria').value = 'hidraulico';
@@ -156,6 +146,7 @@ window.EstoqueModule = {
 
   excluirPeca(id) {
     if (!confirm('Excluir esta peça permanentemente?')) return;
+
     window.State.pecas = window.State.pecas.filter(p => p.id !== id);
     window.Storage.savePecas();
     this.renderPecas();
@@ -241,6 +232,7 @@ window.EstoqueModule = {
       return;
     }
 
+    // Atualiza quantidade da peça
     peca.quantidade = tipo === 'entrada' ? peca.quantidade + quantidade : peca.quantidade - quantidade;
     window.Storage.savePecas();
 
@@ -258,6 +250,7 @@ window.EstoqueModule = {
     window.State.movimentosEstoque.unshift(movimento);
     window.Storage.saveMovimentos();
 
+    // Limpa campos
     document.getElementById('mov_qtd').value = '1';
     document.getElementById('mov_os').value = '';
     document.getElementById('mov_obs').value = '';
@@ -269,6 +262,7 @@ window.EstoqueModule = {
 
     showToast(`${tipo === 'entrada' ? 'Entrada' : 'Saída'} registrada: ${quantidade}x ${peca.descricao}`);
 
+    // Verifica estoque baixo
     if (peca.quantidade <= peca.minimo && peca.quantidade > 0) {
       this.criarNotificacaoEstoque('Estoque baixo', `${peca.codigo} — ${peca.descricao} (${peca.quantidade}/${peca.minimo})`);
     }
@@ -283,8 +277,8 @@ window.EstoqueModule = {
   },
 
   criarNotificacaoEstoque(titulo, descricao) {
-    if (window.Notificacoes) {
-      window.Notificacoes.adicionar({
+    if (window.NotificacoesModule) {
+      window.NotificacoesModule.adicionar({
         id: `estoque_${Date.now()}`,
         titulo: titulo,
         descricao: descricao,
@@ -314,7 +308,7 @@ window.EstoqueModule = {
     tbody.innerHTML = '';
 
     if (!filtered.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-center p-4 text-[var(--muted)]">Nenhuma peça encontrada</td><tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center p-4 text-[var(--muted)]">Nenhuma peça encontrada</td></tr>';
       return;
     }
 
