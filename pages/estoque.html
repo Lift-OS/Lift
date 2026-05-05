@@ -1,28 +1,105 @@
-<!-- Substitua a linha do select "Unidade" por esta -->
-<div>
-  <label class="block text-xs text-[var(--muted)] mb-1">Unidade</label>
-  <select id="est_unidade" class="form-input">
-    <option value="un">Unidade</option>
-    <option value="pc">Peça</option>
-    <option value="mt">Metro</option>
-    <option value="kg">Quilo</option>
-    <option value="lt">Litro</option>
-    <option value="conj">Conjunto</option>
-    <option value="cx">Caixa</option>  <!-- ← NOVO -->
-  </select>
-</div>
+<!-- pages/estoque.html -->
+<div id="tab-estoque">
+  <!-- Stats -->
+  <div class="stats-grid no-print">
+    <div class="stat-card"><div class="stat-value" id="statEstTotalPecas">0</div><div class="stat-label">Total Peças</div></div>
+    <div class="stat-card"><div class="stat-value text-[var(--danger)]" id="statEstoqueBaixo">0</div><div class="stat-label">Estoque Baixo</div></div>
+    <div class="stat-card"><div class="stat-value text-[var(--success)]" id="statEstEntradas">0</div><div class="stat-label">Entradas (mês)</div></div>
+    <div class="stat-card"><div class="stat-value text-[var(--danger)]" id="statEstSaidas">0</div><div class="stat-label">Saídas (mês)</div></div>
+    <div class="stat-card"><div class="stat-value text-[var(--accent)]" id="statEstValorTotal">R$ 0</div><div class="stat-label">Valor em Estoque</div></div>
+  </div>
 
-<!-- Substitua a linha do Preço Custo e Preço Venda por estas -->
-<div>
-  <label class="block text-xs text-[var(--muted)] mb-1">Preço Custo (R$)</label>
-  <input type="number" id="est_preco_custo" class="form-input" step="0.01" value="0" onchange="Estoque.calcularPrecoVenda()">
-</div>
-<div>
-  <label class="block text-xs text-[var(--muted)] mb-1">Margem (%)</label>
-  <input type="number" id="est_margem" class="form-input" step="0.5" value="30" onchange="Estoque.calcularPrecoVenda()">
-</div>
-<div>
-  <label class="block text-xs text-[var(--muted)] mb-1">Preço Venda (R$)</label>
-  <input type="number" id="est_preco_venda" class="form-input" step="0.01" value="0">
-  <button type="button" onclick="Estoque.calcularPrecoVenda()" class="btn btn-secondary text-xs mt-1 w-full">Calcular</button>
+  <!-- Formulário de Cadastro -->
+  <div class="checklist-card p-4 md:p-5 mb-5" id="estoqueFormCard">
+    <div class="flex justify-between items-center flex-wrap gap-3 mb-4">
+      <h2 class="font-display text-xl" id="estFormTitle"><i class="fas fa-cogs"></i> Cadastrar Peça</h2>
+      <input type="hidden" id="est_editId" value="">
+    </div>
+    
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+      <div><label class="block text-xs text-[var(--muted)] mb-1">Código *</label><input type="text" id="est_codigo" class="form-input font-mono" placeholder="EX: BOM-001"></div>
+      <div><label class="block text-xs text-[var(--muted)] mb-1">Descrição *</label><input type="text" id="est_descricao" class="form-input" placeholder="Bomba hidráulica"></div>
+      <div><label class="block text-xs text-[var(--muted)] mb-1">Categoria</label><select id="est_categoria" class="form-input"><option value="hidraulico">Hidráulico</option><option value="eletrico">Elétrico</option><option value="motor">Motor</option><option value="freio">Freio</option><option value="direcao">Direção</option><option value="mastro">Mastro/Garfo</option><option value="seguranca">Segurança</option><option value="outro">Outro</option></select></div>
+      <div><label class="block text-xs text-[var(--muted)] mb-1">Unidade</label><select id="est_unidade" class="form-input"><option value="un">Unidade</option><option value="pc">Peça</option><option value="mt">Metro</option><option value="kg">Quilo</option><option value="lt">Litro</option><option value="conj">Conjunto</option><option value="cx">Caixa</option></select></div>
+    </div>
+    
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+      <div><label class="block text-xs text-[var(--muted)] mb-1">Quantidade Atual</label><input type="number" id="est_qtd" class="form-input" value="0" min="0"></div>
+      <div><label class="block text-xs text-[var(--muted)] mb-1">Estoque Mínimo</label><input type="number" id="est_minimo" class="form-input" value="2" min="0"></div>
+      <div><label class="block text-xs text-[var(--muted)] mb-1">Preço Custo (R$)</label><input type="number" id="est_preco_custo" class="form-input" step="0.01" value="0" onchange="EstoqueModule.calcularPrecoVenda()"></div>
+      <div><label class="block text-xs text-[var(--muted)] mb-1">Margem (%)</label><input type="number" id="est_margem" class="form-input" step="0.5" value="30" onchange="EstoqueModule.calcularPrecoVenda()"></div>
+    </div>
+    
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+      <div><label class="block text-xs text-[var(--muted)] mb-1">Preço Venda (R$)</label><input type="number" id="est_preco_venda" class="form-input" step="0.01" value="0"></div>
+      <div><label class="block text-xs text-[var(--muted)] mb-1">Aplicação</label><input type="text" id="est_aplicacao" class="form-input" placeholder="Toyota 8FG, Clark C25..."></div>
+      <div><button type="button" onclick="EstoqueModule.calcularPrecoVenda()" class="btn btn-secondary text-sm w-full"><i class="fas fa-calculator"></i> Calcular Venda</button></div>
+    </div>
+    
+    <div class="flex gap-3 flex-wrap">
+      <button id="btnEstSalvar" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Peça</button>
+      <button id="btnEstCancelar" class="btn btn-secondary" style="display:none">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Movimentação de Estoque -->
+  <div class="checklist-card p-4 md:p-5 mb-5" id="estMovCard">
+    <h2 class="font-display text-xl mb-3"><i class="fas fa-exchange-alt"></i> Movimentação de Estoque</h2>
+    
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+      <div><label class="block text-xs text-[var(--muted)] mb-1">Tipo *</label><select id="mov_tipo" class="form-input"><option value="entrada">ENTRADA</option><option value="saida">SAÍDA</option></select></div>
+      <div><label class="block text-xs text-[var(--muted)] mb-1">Peça *</label><select id="mov_peca" class="form-input"><option value="">Selecione</option></select></div>
+      <div><label class="block text-xs text-[var(--muted)] mb-1">Quantidade *</label><input type="number" id="mov_qtd" class="form-input" value="1" min="1"></div>
+      <div><label class="block text-xs text-[var(--muted)] mb-1">OS Vinculada</label><input type="text" id="mov_os" class="form-input font-mono" placeholder="OS-XX-XXXX" list="movOSList"><datalist id="movOSList"></datalist></div>
+    </div>
+    
+    <div class="mb-4"><label class="block text-xs text-[var(--muted)] mb-1">Observação</label><input type="text" id="mov_obs" class="form-input" placeholder="Nota fiscal, motivo..."></div>
+    
+    <div class="flex gap-3 flex-wrap">
+      <button id="btnEstRegistrarMov" class="btn btn-success"><i class="fas fa-check"></i> Registrar Movimento</button>
+    </div>
+    
+    <div id="movEstoqueAtual" class="mt-3 text-sm text-[var(--muted)]" style="display:none"></div>
+  </div>
+
+  <!-- Lista de Peças -->
+  <div class="checklist-card p-4 md:p-5 mb-5">
+    <h2 class="font-display text-xl mb-3">Peças Cadastradas</h2>
+    
+    <div class="flex flex-wrap gap-3 mb-4">
+      <input type="text" id="estSearch" placeholder="Buscar peça..." class="form-input w-48" oninput="EstoqueModule.renderPecas()">
+      <select id="estFiltroCat" class="form-input w-36" onchange="EstoqueModule.renderPecas()"><option value="">Todas Categorias</option><option value="hidraulico">Hidráulico</option><option value="eletrico">Elétrico</option><option value="motor">Motor</option><option value="freio">Freio</option><option value="direcao">Direção</option><option value="mastro">Mastro/Garfo</option><option value="seguranca">Segurança</option><option value="outro">Outro</option></select>
+      <select id="estFiltroStock" class="form-input w-36" onchange="EstoqueModule.renderPecas()"><option value="">Todo Estoque</option><option value="baixo">Estoque Baixo</option><option value="zero">Sem Estoque</option><option value="normal">Normal</option></select>
+    </div>
+    
+    <div class="overflow-x-auto">
+      <table class="table-os w-full">
+        <thead class="bg-[var(--bg-secondary)]">
+          <tr><th class="p-2 text-left">Código</th><th class="p-2 text-left">Descrição</th><th class="p-2 text-left">Cat.</th><th class="p-2 text-right">Qtd</th><th class="p-2 text-right">Min.</th><th class="p-2 text-right">P. Venda</th><th class="p-2 text-left">Status</th><th class="p-2 text-left">Ações</th><tr>
+        </thead>
+        <tbody id="estPecasBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Histórico de Movimentações -->
+  <div class="checklist-card p-4 md:p-5">
+    <h2 class="font-display text-xl mb-3"><i class="fas fa-history"></i> Histórico de Movimentações</h2>
+    
+    <div class="flex flex-wrap gap-3 mb-4">
+      <input type="date" id="movDataInicio" class="form-input w-40" onchange="EstoqueModule.renderMovimentos()">
+      <input type="date" id="movDataFim" class="form-input w-40" onchange="EstoqueModule.renderMovimentos()">
+      <select id="movFiltroTipo" class="form-input w-32" onchange="EstoqueModule.renderMovimentos()"><option value="">Todos</option><option value="entrada">Entradas</option><option value="saida">Saídas</option></select>
+    </div>
+    
+    <div class="overflow-x-auto">
+      <table class="table-os w-full">
+        <thead class="bg-[var(--bg-secondary)]">
+          <tr><th class="p-2 text-left">Data/Hora</th><th class="p-2 text-left">Tipo</th><th class="p-2 text-left">Peça</th><th class="p-2 text-right">Qtd</th><th class="p-2 text-left">OS</th><th class="p-2 text-left">Obs.</th></tr>
+        </thead>
+        <tbody id="estMovBody"></tbody>
+      </table>
+    </div>
+    <div id="estMovEmpty" class="text-center py-6 text-[var(--muted)] hidden">Nenhuma movimentação</div>
+  </div>
 </div>
