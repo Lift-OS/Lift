@@ -1,6 +1,6 @@
 // google-sheets.js - Versão corrigida (sem erros de sintaxe)
 window.GoogleSheets = {
-  webAppUrl: 'https://script.google.com/macros/s/AKfycbyUbIyckpgXkgJ_Er3yG2wDbZ_Afk1wQNQvBW1vn1qEE8hQZxdNngmHE-xyKVWbotuL/exec',
+  webAppUrl: 'https://script.google.com/macros/s/AKfycbyk_qdLJeP2sAZMoixWy7bFOj2aEQ-FFjXwBnEs85I8FLvd6RRRDNX1crrviI38oDQQ/exec',
 
   async postData(action, data) {
     try {
