@@ -35,7 +35,6 @@ window.PageLoader = {
   },
 
   initPage(pageName) {
-    // Remove modais residuais
     const modalCliente = document.getElementById('modalEscolhaCliente');
     if (modalCliente) modalCliente.remove();
     const modalEquip = document.getElementById('modalEquipamentosCliente');
@@ -78,7 +77,7 @@ window.PageLoader = {
   }
 };
 
-// Estado global (compatível com o original)
+// Estado global
 window.State = {
   clients: [],
   osHistory: [],
@@ -98,7 +97,7 @@ window.State = {
   lastSeenOSIds: []
 };
 
-// Storage (compatível com o original)
+// Storage
 window.Storage = {
   save(key, value) { try { localStorage.setItem('LiftOS_' + key, JSON.stringify(value)); } catch(e) {} },
   load(key) { try { const d = localStorage.getItem('LiftOS_' + key); return d ? JSON.parse(d) : null; } catch(e) { return null; } },
@@ -146,9 +145,17 @@ window.App = {
     if (window.Fotos) window.Fotos.init();
     if (window.Horas) window.Horas.initListeners();
     if (window.Notificacoes) window.Notificacoes.init();
-    // Inicializa sistema de temas
-    if (window.ThemeManager) { window.ThemeManager.init(); }
-    // Sincronização
+    if (window.ThemeManager) window.ThemeManager.init();
+
+    // ========== INICIALIZAR ONESIGNAL APÓS LOGIN ==========
+    if (window.OneSignal && window.Auth.currentUser) {
+      window.OneSignal.Deferred.push(function(OneSignal) {
+        OneSignal.login(window.Auth.currentUser.login);
+        console.log('✅ OneSignal: usuário identificado', window.Auth.currentUser.login);
+      });
+    }
+    // =====================================================
+
     if (window.Auth.can('sincronizar') && navigator.onLine) {
       setTimeout(() => window.GoogleSheets.fetchFromSheet(), 1500);
     }
