@@ -1,11 +1,11 @@
-// heartbeat.js - Mantém o usuário como "online"
+// heartbeat.js - Mantém o usuário como "online" para outros usuários
 window.Heartbeat = {
   _timer: null,
   _enabled: false,
 
   start() {
     if (this._enabled) return;
-    if (!window.Auth.currentUser) {
+    if (!window.Auth || !window.Auth.currentUser) {
       console.warn('Heartbeat: usuário não logado');
       return;
     }
@@ -21,7 +21,8 @@ window.Heartbeat = {
       clearInterval(this._timer);
       this._timer = null;
     }
-    if (window.GoogleSheets && window.Auth.currentUser) {
+    // Envia status offline ao sair
+    if (window.GoogleSheets && window.Auth && window.Auth.currentUser) {
       window.GoogleSheets.postData('heartbeat', {
         login: window.Auth.currentUser.login,
         status: 'offline'
@@ -32,7 +33,8 @@ window.Heartbeat = {
 
   _sendPing() {
     if (!this._enabled) return;
-    if (!window.Auth.currentUser || !window.GoogleSheets) return;
+    if (!window.Auth || !window.Auth.currentUser) return;
+    if (!window.GoogleSheets) return;
     
     const user = window.Auth.currentUser;
     window.GoogleSheets.postData('heartbeat', {
@@ -41,8 +43,11 @@ window.Heartbeat = {
       nivel: user.nivel,
       status: 'online'
     }).then(success => {
-      if (success) console.log('Heartbeat enviado com sucesso');
-      else console.warn('Heartbeat falhou');
+      if (success) {
+        console.log('Heartbeat enviado com sucesso');
+      } else {
+        console.warn('Heartbeat falhou');
+      }
     }).catch(e => console.warn('Heartbeat error:', e));
   }
 };
