@@ -1,6 +1,6 @@
-// google-sheets.js - Versão corrigida (sem erros de sintaxe)
+// google-sheets.js - Baseado no original funcional
 window.GoogleSheets = {
-  webAppUrl: 'https://script.google.com/macros/s/AKfycbzpdVuPW9kUZFJzEHf2MY6EpoFKmNYoEerW7tp1m64PxMZSNQlLCpB2KB4s_TADEejh/exec',
+  webAppUrl: 'https://script.google.com/macros/s/AKfycbzpdVuPW9kUZFJzEHf2MY6EpoFKmNYoEerW7tp1m64PxMZSNQlLCpB2KB4s_TADEejh/exec', // ← Substitua pela URL correta
 
   async postData(action, data) {
     try {
@@ -11,14 +11,8 @@ window.GoogleSheets = {
         redirect: 'follow'
       });
       const text = await response.text();
-      try { 
-        return JSON.parse(text).success === true; 
-      } catch(e) { 
-        return false; 
-      }
-    } catch(e) { 
-      return false; 
-    }
+      try { return JSON.parse(text).success === true; } catch(e) { return false; }
+    } catch(e) { return false; }
   },
 
   async syncSingleOS(osData) { return this.postData('syncOS', osData); },
@@ -31,7 +25,6 @@ window.GoogleSheets = {
   async syncPermissoes(permData) { return this.postData('syncPermissoes', permData); },
   async syncUsuarios(usersData) { return this.postData('syncUsuarios', usersData); },
   async syncNotificacao(notifData) { return this.postData('syncNotificacao', notifData); },
-  async syncDeleteOS(osData) { return this.postData('deleteOS', osData); }, // Para excluir OS da planilha
 
   async fetchOnlineUsers() {
     try {
@@ -42,17 +35,12 @@ window.GoogleSheets = {
         return true;
       }
       return false;
-    } catch(e) { 
-      return false; 
-    }
+    } catch(e) { return false; }
   },
 
   async fetchFromSheet() {
     const btn = document.getElementById('btnDownload');
-    if (btn) { 
-      btn.classList.add('btn-loading'); 
-      btn.disabled = true; 
-    }
+    if (btn) { btn.classList.add('btn-loading'); btn.disabled = true; }
     try {
       const response = await fetch(`${this.webAppUrl}?_t=${Date.now()}`);
       const data = await response.json();
@@ -102,10 +90,7 @@ window.GoogleSheets = {
       console.error('[SYNC] Erro:', err);
       showToast('Erro: ' + err.message, true);
     } finally {
-      if (btn) { 
-        btn.classList.remove('btn-loading'); 
-        btn.disabled = false; 
-      }
+      if (btn) { btn.classList.remove('btn-loading'); btn.disabled = false; }
     }
   }
 };
