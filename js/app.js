@@ -146,7 +146,8 @@ window.App = {
     if (window.Fotos) window.Fotos.init();
     if (window.Horas) window.Horas.initListeners();
     if (window.Notificacoes) window.Notificacoes.init();
-
+    // Inicializa sistema de temas
+    if (window.ThemeManager) { window.ThemeManager.init(); }
     // Sincronização
     if (window.Auth.can('sincronizar') && navigator.onLine) {
       setTimeout(() => window.GoogleSheets.fetchFromSheet(), 1500);
