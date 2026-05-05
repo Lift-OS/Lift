@@ -1,8 +1,8 @@
-// modules/clientes.js - Fluxo corrigido: Cliente → Equipamento → OS/Orçamento
+// modules/clientes.js - Módulo de Clientes (com carregamento de equipamento)
 window.ClientesModule = {
   editingId: null,
-  modalEscolha: null,
-  modalEquipamentos: null,
+  clienteSelecionado: null,
+  equipamentoSelecionado: null,
 
   normalizarEquipamentos(cliente) {
     if (!cliente) return;
@@ -19,21 +19,12 @@ window.ClientesModule = {
     cliente.equipamentos = [];
   },
 
-  removerModal() {
-    if (this.modalEscolha && this.modalEscolha.parentNode) this.modalEscolha.parentNode.removeChild(this.modalEscolha);
-    if (this.modalEquipamentos && this.modalEquipamentos.parentNode) this.modalEquipamentos.parentNode.removeChild(this.modalEquipamentos);
-    const m1 = document.getElementById('modalEscolhaCliente'); if(m1) m1.remove();
-    const m2 = document.getElementById('modalEquipamentosCliente'); if(m2) m2.remove();
-    this.modalEscolha = null; this.modalEquipamentos = null;
-  },
-
   init() {
     setTimeout(() => {
       window.State.clients.forEach(c => this.normalizarEquipamentos(c));
       this.renderTable();
       if (typeof this.updateStats === 'function') this.updateStats();
       this.loadEventListeners();
-      this.removerModal();
     }, 100);
   },
 
@@ -52,55 +43,33 @@ window.ClientesModule = {
 
   updateStats() {
     const totalClientes = window.State.clients.length;
-    let totalEquipamentos = 0;
-    const clientesComOS = new Set();
-    let totalOS = 0, osAbertas = 0, osAprovadas = 0;
-    window.State.clients.forEach(c => {
-      const eq = Array.isArray(c.equipamentos) ? c.equipamentos : [];
-      totalEquipamentos += eq.length;
-    });
-    window.State.osHistory.forEach(os => {
-      if (os.cliente) { clientesComOS.add(os.cliente); totalOS++; }
-      if (['abertura','execucao','finalizacao'].includes(os.status)) osAbertas++;
-      if (os.status === 'aprovada') osAprovadas++;
-    });
     const elTotal = document.getElementById('statTotalClientes');
-    const elMarcas = document.getElementById('statTotalMarcas');
-    const elClientesOS = document.getElementById('statClientesComOS');
-    const elTotalOS = document.getElementById('statTotalOSClientes');
-    const elOSAbertas = document.getElementById('statOSAbertasCliente');
-    const elOSAprovadas = document.getElementById('statOSAprovadasCliente');
     if (elTotal) elTotal.innerText = totalClientes;
-    if (elMarcas) elMarcas.innerText = totalEquipamentos;
-    if (elClientesOS) elClientesOS.innerText = clientesComOS.size;
-    if (elTotalOS) elTotalOS.innerText = totalOS;
-    if (elOSAbertas) elOSAbertas.innerText = osAbertas;
-    if (elOSAprovadas) elOSAprovadas.innerText = osAprovadas;
   },
 
-  renderTable(clientesList) {
-    const list = clientesList || window.State.clients;
+  renderTable() {
     const tbody = document.getElementById('cad_tableBody');
-    if (!tbody) { setTimeout(() => this.renderTable(clientesList), 100); return; }
+    if (!tbody) return;
     tbody.innerHTML = '';
-    if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-[var(--muted)]">Nenhum cliente cadastrado</td><tr>';
+    
+    if (!window.State.clients.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-[var(--muted)]">Nenhum cliente cadastrado</td></tr>';
       return;
     }
-    const podeEditar = window.Auth.can('clientes_editar');
-    const podeExcluir = window.Auth.can('clientes_excluir');
-    list.forEach(cliente => {
+
+    window.State.clients.forEach(cliente => {
       const equipArray = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
-      const marcas = equipArray.map(e => e.marca).join(', ');
-      let acoes = `<button onclick="ClientesModule.selecionarCliente(${cliente.id})" class="btn btn-primary text-xs py-1 px-2"><i class="fas fa-arrow-right"></i> Selecionar</button>`;
-      if (podeEditar) acoes += ` <i class="fas fa-edit text-blue-400 cursor-pointer ml-2" onclick="ClientesModule.edit(${cliente.id})"></i>`;
-      if (podeExcluir) acoes += ` <i class="fas fa-trash text-red-400 cursor-pointer ml-2" onclick="ClientesModule.delete(${cliente.id})"></i>`;
+      const marcas = equipArray.map(e => e.marca || '').join(', ');
       const row = tbody.insertRow();
       row.innerHTML = `
-        <td class="p-2 font-medium">${window.esc(cliente.nome) || ''}</td>
-        <td class="p-2">${window.esc(cliente.cidade) || '-'}</td>
+        <td class="p-2">${window.esc(cliente.nome || '')}</td>
+        <td class="p-2">${window.esc(cliente.cidade || '-')}</td>
         <td class="p-2">${window.esc(marcas) || '-'}</td>
-        <td class="p-2">${acoes}</td>
+        <td class="p-2">
+          <button onclick="ClientesModule.selecionarCliente(${cliente.id})" class="btn btn-primary text-xs py-1 px-2">
+            <i class="fas fa-arrow-right"></i> Selecionar
+          </button>
+        </td>
       `;
     });
   },
@@ -114,42 +83,35 @@ window.ClientesModule = {
     this.renderTable(filtered);
   },
 
-  // ========== NOVO FLUXO: Cliente → Equipamento → Escolha OS/Orçamento ==========
-  
-  // 1. Cliente selecionado
   selecionarCliente(id) {
     const cliente = window.State.clients.find(c => c.id === id);
     if (!cliente) return;
     this.clienteSelecionado = cliente;
     
-    // Verifica se tem equipamentos
     const equipamentos = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
     if (equipamentos.length === 0) {
-      // Sem equipamento, vai direto para escolha OS/Orçamento
       this.mostrarModalEscolha(cliente, null);
     } else if (equipamentos.length === 1) {
-      // Um equipamento, vai direto para escolha OS/Orçamento com o equipamento
       this.mostrarModalEscolha(cliente, equipamentos[0]);
     } else {
-      // Vários equipamentos, mostra modal para escolher
-      this.mostrarModalEquipamentos(cliente);
+      this.mostrarModalEquipamentos(cliente, equipamentos);
     }
   },
 
-  // 2. Modal de equipamentos (quando tem mais de um)
-  mostrarModalEquipamentos(cliente) {
-    const modal = document.getElementById('equipModal');
+  mostrarModalEquipamentos(cliente, equipamentos) {
+    let modal = document.getElementById('equipModal');
     const list = document.getElementById('equipList');
     if (!modal || !list) return;
-    list.innerHTML = '';
     
-    const equipamentos = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
+    list.innerHTML = '';
+    modal.style.display = 'flex';
+    
     equipamentos.forEach(eq => {
       const div = document.createElement('div');
       div.className = 'equip-option p-3 bg-[var(--bg-secondary)] rounded-lg mb-2 cursor-pointer hover:border-[var(--accent)] transition-all';
       div.innerHTML = `
         <div><strong>${window.esc(eq.marca || 'N/A')} ${window.esc(eq.modelo || '')}</strong></div>
-        <div class="text-sm text-[var(--muted)]">Série: ${window.esc(eq.serie || 'N/A')} | Qtd: ${eq.qtd || 1}</div>
+        <div class="text-sm text-[var(--muted)]">Série: ${window.esc(eq.serie || 'N/A')} | Combustível: ${window.esc(eq.combustivel || 'N/A')}</div>
       `;
       div.onclick = () => {
         modal.style.display = 'none';
@@ -157,13 +119,13 @@ window.ClientesModule = {
       };
       list.appendChild(div);
     });
-    modal.style.display = 'flex';
   },
 
-  // 3. Modal de escolha entre OS e Orçamento (após equipamento definido)
   mostrarModalEscolha(cliente, equipamento) {
-    this.removerModal();
-    const modal = document.createElement('div');
+    let modal = document.getElementById('modalEscolhaCliente');
+    if (modal) modal.remove();
+    
+    modal = document.createElement('div');
     modal.id = 'modalEscolhaCliente';
     modal.className = 'modal';
     modal.style.display = 'flex';
@@ -173,27 +135,25 @@ window.ClientesModule = {
         ${equipamento ? `<p class="text-sm text-[var(--success)] mb-4">Equipamento: ${window.esc(equipamento.marca)} ${window.esc(equipamento.modelo || '')}</p>` : '<p class="text-sm text-[var(--muted)] mb-4">Nenhum equipamento cadastrado</p>'}
         <p class="text-sm text-[var(--muted)] mb-6">O que deseja fazer?</p>
         <div class="flex flex-col gap-3">
-          <button id="escolhaOS" class="btn btn-primary w-full"><i class="fas fa-clipboard-list"></i> Abrir Ordem de Serviço</button>
+          <button id="escolhaOS" class="btn btn-primary w-full"><i class="fas fa-clipboard-list"></i> Abrir OS</button>
           <button id="escolhaOrcamento" class="btn btn-info w-full"><i class="fas fa-file-invoice-dollar"></i> Criar Orçamento</button>
-          <button id="escolhaCancelar" class="btn btn-secondary w-full"><i class="fas fa-times"></i> Cancelar</button>
+          <button id="escolhaCancelar" class="btn btn-secondary w-full">Cancelar</button>
         </div>
       </div>
     `;
     document.body.appendChild(modal);
-    this.modalEscolha = modal;
     
     document.getElementById('escolhaOS').onclick = () => {
-      this.removerModal();
+      modal.remove();
       this.abrirOS(cliente, equipamento);
     };
     document.getElementById('escolhaOrcamento').onclick = () => {
-      this.removerModal();
+      modal.remove();
       this.abrirOrcamento(cliente, equipamento);
     };
-    document.getElementById('escolhaCancelar').onclick = () => this.removerModal();
+    document.getElementById('escolhaCancelar').onclick = () => modal.remove();
   },
 
-  // 4. Abrir OS com dados do cliente e equipamento
   async abrirOS(cliente, equipamento) {
     await window.PageLoader.load('os');
     setTimeout(() => {
@@ -206,97 +166,70 @@ window.ClientesModule = {
       
       // Dados do equipamento (se existir)
       if (equipamento) {
-        this.carregarEquipamentoNaOS(equipamento);
+        // Marca
+        const marcaSelect = document.getElementById('marcaSelect');
+        const marcaOutraDiv = document.getElementById('marcaOutraDiv');
+        const marcaOutra = document.getElementById('marcaOutra');
+        const marca = equipamento.marca || '';
+        const marcasList = ["TOYOTA","CLARK","BYD","PALETRANS","LINDE","HYSTER","YALE","CATERPILLAR","KOMATSU","MITSUBISHI","NISSAN","STILL","CROWN","JUNGHEINRICH","TCM","HYUNDAI","DOOSAN","HELI","HANGCHA","LONKING"];
+        
+        if (marcaSelect) {
+          if (marcasList.includes(marca)) {
+            marcaSelect.value = marca;
+            if (marcaOutraDiv) marcaOutraDiv.style.display = 'none';
+          } else if (marca) {
+            marcaSelect.value = 'OUTRA';
+            if (marcaOutraDiv) marcaOutraDiv.style.display = 'block';
+            if (marcaOutra) marcaOutra.value = marca;
+          }
+        }
+        
+        // Modelo
+        window.Utils.setVal('modelo', equipamento.modelo || '');
+        
+        // Número de Série
+        window.Utils.setVal('numSerie', equipamento.serie || '');
+        
+        // Combustível
+        if (equipamento.combustivel) {
+          window.Utils.setVal('combustivel', equipamento.combustivel);
+        }
+        
+        showToast(`Equipamento ${equipamento.marca} ${equipamento.modelo} carregado`);
       }
       
       showToast(`Cliente ${cliente.nome} carregado na OS`);
-    }, 200);
+    }, 300);
   },
 
-  // 5. Abrir Orçamento com dados do cliente e equipamento
   async abrirOrcamento(cliente, equipamento) {
     await window.PageLoader.load('orcamento');
     setTimeout(() => {
+      // Dados do cliente
       window.Utils.setVal('orc_cliente', cliente.nome);
-      window.Utils.setVal('orc_equipamento', '');
-      window.Utils.setVal('orc_serie_combustivel', '');
       
+      // Dados do equipamento (se existir)
       if (equipamento) {
+        // Equipamento (Marca + Modelo)
         const marcaModelo = `${equipamento.marca || ''} ${equipamento.modelo || ''}`.trim();
         window.Utils.setVal('orc_equipamento', marcaModelo);
+        
+        // Série e Combustível
         const serieComb = `Série: ${equipamento.serie || 'N/A'} | Combustível: ${equipamento.combustivel || 'N/A'}`;
         window.Utils.setVal('orc_serie_combustivel', serieComb);
+        
+        showToast(`Equipamento ${marcaModelo} carregado`);
       }
       
       showToast(`Cliente ${cliente.nome} carregado no orçamento`);
-    }, 200);
+    }, 300);
   },
 
-  // 6. Carregar equipamento na OS (preenche os campos)
-  carregarEquipamentoNaOS(equip) {
-    const marcaSelect = document.getElementById('marcaSelect');
-    const marcaOutraDiv = document.getElementById('marcaOutraDiv');
-    const marcaOutra = document.getElementById('marcaOutra');
-    
-    if (marcaSelect) {
-      const marca = equip.marca || '';
-      const marcasList = ["TOYOTA","CLARK","BYD","PALETRANS","LINDE","HYSTER","YALE","CATERPILLAR","KOMATSU","MITSUBISHI","NISSAN","STILL","CROWN","JUNGHEINRICH","TCM","HYUNDAI","DOOSAN","HELI","HANGCHA","LONKING"];
-      if (marcasList.includes(marca)) {
-        marcaSelect.value = marca;
-        if (marcaOutraDiv) marcaOutraDiv.style.display = 'none';
-      } else if (marca) {
-        marcaSelect.value = 'OUTRA';
-        if (marcaOutraDiv) marcaOutraDiv.style.display = 'block';
-        if (marcaOutra) marcaOutra.value = marca;
-      }
-    }
-    window.Utils.setVal('modelo', equip.modelo || '');
-    window.Utils.setVal('numSerie', equip.serie || '');
-    if (equip.combustivel) window.Utils.setVal('combustivel', equip.combustivel);
-  },
-
-  // ========== MÉTODOS ORIGINAIS (mantidos para compatibilidade) ==========
-  
-  select(id) { this.selecionarCliente(id); },  // compatibilidade
-
-  carregarDadosCliente(cliente) {
-    window.Utils.setVal('cliente', cliente.nome);
-    window.Utils.setVal('cnpj', cliente.cnpj || '');
-    window.Utils.setVal('cidadeCliente', cliente.cidade || '');
-    window.Utils.setVal('endereco', cliente.endereco || '');
-    window.Utils.setVal('whatsappCliente', cliente.whatsapp || '');
-    showToast('Cliente carregado');
-  },
-
-  carregarEquipamento(equip, cliente) {
-    this.carregarDadosCliente(cliente);
-    this.carregarEquipamentoNaOS(equip);
-    showToast('Equipamento carregado');
-    document.querySelector('.tab-button[data-tab="tab-os"]').click();
-  },
-
-  // CRUD (save, edit, delete, etc.) mantidos como estavam funcionando
   async save() {
-    if (!window.Auth.can('clientes_cadastrar')) { showToast('Apenas administrador pode cadastrar clientes', true); return; }
+    if (!window.Auth.can('clientes_cadastrar')) { showToast('Sem permissão', true); return; }
     const nome = document.getElementById('cad_nome')?.value.trim();
-    if (!nome) { showToast('Nome do cliente é obrigatório', true); return; }
-    const equipamentos = [];
-    const equipItems = document.querySelectorAll('#equipamentosList .equip-item');
-    equipItems.forEach(item => {
-      const marcaSelect = item.querySelector('.equip-marca');
-      const outraMarca = item.querySelector('.outra-marca');
-      let marca = marcaSelect?.value || '';
-      if (marca === 'OUTRA' && outraMarca) marca = outraMarca.value.toUpperCase();
-      if (marca) {
-        equipamentos.push({
-          marca: marca,
-          modelo: item.querySelector('.equip-modelo')?.value || '',
-          serie: item.querySelector('.equip-serie')?.value || '',
-          qtd: parseInt(item.querySelector('.equip-qtd')?.value) || 1,
-          combustivel: item.querySelector('.equip-combustivel')?.value || ''
-        });
-      }
-    });
+    if (!nome) { showToast('Nome obrigatório', true); return; }
+    
     const cliente = {
       id: this.editingId || Date.now(),
       nome: nome,
@@ -306,32 +239,30 @@ window.ClientesModule = {
       telefone: document.getElementById('cad_telefone')?.value || '',
       whatsapp: document.getElementById('cad_whatsapp')?.value || '',
       email: document.getElementById('cad_email')?.value || '',
-      responsavel_nome: document.getElementById('cad_responsavel_nome')?.value || '',
-      responsavel_telefone: document.getElementById('cad_responsavel_telefone')?.value || '',
-      equipamentos: equipamentos
+      equipamentos: []
     };
+    
     if (this.editingId) {
       const index = window.State.clients.findIndex(c => c.id === this.editingId);
       if (index >= 0) window.State.clients[index] = cliente;
-      showToast('Cliente atualizado');
       this.editingId = null;
       document.getElementById('cad_btnCancelar').style.display = 'none';
     } else {
       window.State.clients.push(cliente);
-      showToast('Cliente cadastrado');
     }
+    
     window.Storage.saveClients();
     this.clearForm();
     this.renderTable();
     this.updateStats();
-    if (window.GoogleSheets && window.Auth.can('sincronizar')) await window.GoogleSheets.syncSingleCliente(cliente);
+    showToast('Cliente salvo');
   },
 
   edit(id) {
-    if (!window.Auth.can('clientes_editar')) { showToast('Apenas administrador pode editar', true); return; }
+    if (!window.Auth.can('clientes_editar')) { showToast('Sem permissão', true); return; }
     const cliente = window.State.clients.find(c => c.id === id);
     if (!cliente) return;
-    this.normalizarEquipamentos(cliente);
+    
     this.editingId = id;
     document.getElementById('cad_nome').value = cliente.nome || '';
     document.getElementById('cad_cnpj').value = cliente.cnpj || '';
@@ -340,19 +271,12 @@ window.ClientesModule = {
     document.getElementById('cad_telefone').value = cliente.telefone || '';
     document.getElementById('cad_whatsapp').value = cliente.whatsapp || '';
     document.getElementById('cad_email').value = cliente.email || '';
-    document.getElementById('cad_responsavel_nome').value = cliente.responsavel_nome || '';
-    document.getElementById('cad_responsavel_telefone').value = cliente.responsavel_telefone || '';
-    const container = document.getElementById('equipamentosList');
-    if (container) container.innerHTML = '';
-    const equipamentos = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
-    equipamentos.forEach(eq => this.adicionarCampoEquipamento(eq.marca, eq.modelo, eq.serie, eq.qtd, eq.combustivel));
     document.getElementById('cad_btnCancelar').style.display = 'inline-flex';
-    document.getElementById('clienteFormCard')?.scrollIntoView({ behavior: 'smooth' });
   },
 
   delete(id) {
-    if (!window.Auth.can('clientes_excluir')) { showToast('Apenas administrador pode excluir', true); return; }
-    if (!confirm('Excluir este cliente permanentemente?')) return;
+    if (!window.Auth.can('clientes_excluir')) { showToast('Sem permissão', true); return; }
+    if (!confirm('Excluir cliente?')) return;
     window.State.clients = window.State.clients.filter(c => c.id !== id);
     window.Storage.saveClients();
     this.renderTable();
@@ -360,64 +284,22 @@ window.ClientesModule = {
     showToast('Cliente excluído');
   },
 
-  cancelEdit() { this.editingId = null; this.clearForm(); document.getElementById('cad_btnCancelar').style.display = 'none'; },
-  
-  clearForm() {
-    const fields = ['cad_nome','cad_cnpj','cad_endereco','cad_cidade','cad_telefone','cad_whatsapp','cad_email','cad_responsavel_nome','cad_responsavel_telefone'];
-    fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    const container = document.getElementById('equipamentosList'); if (container) container.innerHTML = '';
+  cancelEdit() {
+    this.editingId = null;
+    this.clearForm();
+    document.getElementById('cad_btnCancelar').style.display = 'none';
   },
 
-  adicionarCampoEquipamento(marca, modelo, serie, qtd, combustivel) {
-    const container = document.getElementById('equipamentosList');
-    if (!container) return;
-    const div = document.createElement('div');
-    div.className = 'equip-item grid grid-cols-1 md:grid-cols-6 gap-2 p-2 bg-[var(--bg-secondary)] rounded-lg mb-2';
-    const marcasOptions = `
-      <option value="">Selecione</option>
-      <option value="TOYOTA" ${marca === 'TOYOTA' ? 'selected' : ''}>TOYOTA</option>
-      <option value="CLARK" ${marca === 'CLARK' ? 'selected' : ''}>CLARK</option>
-      <option value="BYD" ${marca === 'BYD' ? 'selected' : ''}>BYD</option>
-      <option value="PALETRANS" ${marca === 'PALETRANS' ? 'selected' : ''}>PALETRANS</option>
-      <option value="LINDE" ${marca === 'LINDE' ? 'selected' : ''}>LINDE</option>
-      <option value="HYSTER" ${marca === 'HYSTER' ? 'selected' : ''}>HYSTER</option>
-      <option value="YALE" ${marca === 'YALE' ? 'selected' : ''}>YALE</option>
-      <option value="CATERPILLAR" ${marca === 'CATERPILLAR' ? 'selected' : ''}>CATERPILLAR</option>
-      <option value="KOMATSU" ${marca === 'KOMATSU' ? 'selected' : ''}>KOMATSU</option>
-      <option value="MITSUBISHI" ${marca === 'MITSUBISHI' ? 'selected' : ''}>MITSUBISHI</option>
-      <option value="NISSAN" ${marca === 'NISSAN' ? 'selected' : ''}>NISSAN</option>
-      <option value="OUTRA" ${marca === 'OUTRA' || (marca && !['TOYOTA','CLARK','BYD','PALETRANS','LINDE','HYSTER','YALE','CATERPILLAR','KOMATSU','MITSUBISHI','NISSAN'].includes(marca)) ? 'selected' : ''}>OUTRA</option>
-    `;
-    div.innerHTML = `
-      <select class="form-input equip-marca">${marcasOptions}</select>
-      <div class="outra-marca-container" style="display:${marca && !['TOYOTA','CLARK','BYD','PALETRANS','LINDE','HYSTER','YALE','CATERPILLAR','KOMATSU','MITSUBISHI','NISSAN'].includes(marca) ? 'block' : 'none'}">
-        <input type="text" placeholder="Digite a marca" class="form-input outra-marca" value="${window.esc(marca && !['TOYOTA','CLARK','BYD','PALETRANS','LINDE','HYSTER','YALE','CATERPILLAR','KOMATSU','MITSUBISHI','NISSAN'].includes(marca) ? marca : '')}">
-      </div>
-      <input type="text" placeholder="Modelo" class="form-input equip-modelo" value="${window.esc(modelo || '')}">
-      <input type="text" placeholder="Série" class="form-input equip-serie" value="${window.esc(serie || '')}">
-      <input type="number" placeholder="Qtd" class="form-input equip-qtd" value="${qtd || 1}">
-      <select class="form-input equip-combustivel">
-        <option value="">Combustível</option>
-        <option value="eletrico" ${combustivel === 'eletrico' ? 'selected' : ''}>Elétrico</option>
-        <option value="diesel" ${combustivel === 'diesel' ? 'selected' : ''}>Diesel</option>
-        <option value="gasolina" ${combustivel === 'gasolina' ? 'selected' : ''}>Gasolina</option>
-        <option value="glp" ${combustivel === 'glp' ? 'selected' : ''}>GLP</option>
-      </select>
-      <button type="button" class="text-red-500" onclick="this.closest('.equip-item').remove()"><i class="fas fa-trash"></i></button>
-    `;
-    const marcaSelect = div.querySelector('.equip-marca');
-    const outraDiv = div.querySelector('.outra-marca-container');
-    marcaSelect.onchange = () => { outraDiv.style.display = marcaSelect.value === 'OUTRA' ? 'block' : 'none'; };
-    container.appendChild(div);
+  clearForm() {
+    const fields = ['cad_nome', 'cad_cnpj', 'cad_endereco', 'cad_cidade', 'cad_telefone', 'cad_whatsapp', 'cad_email'];
+    fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   },
 
   exportCSV() {
-    if (!window.Auth.can('clientes_exportar_csv')) { showToast('Apenas administrador pode exportar', true); return; }
-    let csv = "Nome,CNPJ,Endereco,Cidade,Telefone,WhatsApp,E-mail,Responsavel,TelResp,Marcas\n";
+    if (!window.Auth.can('clientes_exportar_csv')) return;
+    let csv = "Nome,CNPJ,Endereco,Cidade,Telefone,WhatsApp,E-mail\n";
     window.State.clients.forEach(c => {
-      const equipArray = Array.isArray(c.equipamentos) ? c.equipamentos : [];
-      const marcas = equipArray.map(e => e.marca).join(';');
-      csv += `"${c.nome || ''}",${c.cnpj || ''},"${c.endereco || ''}","${c.cidade || ''}",${c.telefone || ''},${c.whatsapp || ''},${c.email || ''},"${c.responsavel_nome || ''}",${c.responsavel_telefone || ''},"${marcas}"\n`;
+      csv += `"${c.nome || ''}",${c.cnpj || ''},"${c.endereco || ''}","${c.cidade || ''}",${c.telefone || ''},${c.whatsapp || ''},${c.email || ''}\n`;
     });
     const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -428,7 +310,7 @@ window.ClientesModule = {
   },
 
   importCSV() {
-    if (!window.Auth.can('clientes_importar_csv')) { showToast('Apenas administrador pode importar', true); return; }
+    if (!window.Auth.can('clientes_importar_csv')) return;
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.csv';
@@ -438,7 +320,6 @@ window.ClientesModule = {
       reader.onload = (ev) => {
         const lines = ev.target.result.split('\n');
         for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
           const cols = window.Utils.parseCSVLine(lines[i]);
           if (cols[0]) {
             window.State.clients.push({
@@ -450,8 +331,6 @@ window.ClientesModule = {
               telefone: cols[4] || '',
               whatsapp: cols[5] || '',
               email: cols[6] || '',
-              responsavel_nome: cols[7] || '',
-              responsavel_telefone: cols[8] || '',
               equipamentos: []
             });
           }
@@ -468,7 +347,6 @@ window.ClientesModule = {
 
   loadFromSync(clientes) {
     if (Array.isArray(clientes) && clientes.length) {
-      clientes.forEach(c => this.normalizarEquipamentos(c));
       window.State.clients = clientes;
       window.Storage.saveClients();
       this.renderTable();
