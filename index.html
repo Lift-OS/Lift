@@ -13,6 +13,39 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <!-- ================================= -->
   
+  <!-- OneSignal Push Notifications -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.init({
+        appId: "f5486ce2-a1b2-46c1-978c-80374f5611ee",
+        allowLocalhostAsSecureOrigin: true,
+      });
+    });
+    
+    // Função global para enviar notificação
+    window.enviarPushLift = function(titulo, mensagem, url) {
+      if (window.OneSignal) {
+        window.OneSignal.Deferred.push(function(OneSignal) {
+          OneSignal.Notifications.sendSelf(titulo, mensagem, url || '/lift-os/');
+        });
+        console.log('🔔 Notificação enviada:', titulo);
+      } else {
+        console.warn('OneSignal não disponível');
+      }
+    };
+    
+    // Solicitar permissão
+    window.ativarNotificacoes = function() {
+      if (window.OneSignal) {
+        window.OneSignal.Deferred.push(function(OneSignal) {
+          OneSignal.Notifications.requestPermission();
+        });
+      }
+    };
+  </script>
+  
   <title>Lift OS - Profissional v6.0</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -113,20 +146,17 @@
               <i class="fas fa-chevron-down"></i>
             </div>
             <div class="theme-dropdown" id="themeDropdown">
-              <div class="theme-option" data-theme="dark">
-                <i class="fas fa-moon"></i> Escuro
-              </div>
-              <div class="theme-option" data-theme="light">
-                <i class="fas fa-sun"></i> Claro
-              </div>
-              <div class="theme-option" data-theme="blue">
-                <i class="fas fa-water"></i> Azul
-              </div>
-              <div class="theme-option" data-theme="green">
-                <i class="fas fa-leaf"></i> Verde
-              </div>
+              <div class="theme-option" data-theme="dark"><i class="fas fa-moon"></i> Escuro</div>
+              <div class="theme-option" data-theme="light"><i class="fas fa-sun"></i> Claro</div>
+              <div class="theme-option" data-theme="blue"><i class="fas fa-water"></i> Azul</div>
+              <div class="theme-option" data-theme="green"><i class="fas fa-leaf"></i> Verde</div>
             </div>
           </div>
+          
+          <!-- Botão Ativar Notificações -->
+          <button onclick="window.ativarNotificacoes && window.ativarNotificacoes()" class="btn btn-secondary text-xs" title="Ativar notificações push">
+            <i class="fas fa-bell"></i> Push
+          </button>
           
           <!-- ÁREA DO USUÁRIO -->
           <div class="user-area flex items-center gap-2 bg-[var(--bg-secondary)] px-4 py-2 rounded-full">
@@ -215,7 +245,6 @@ if ('serviceWorker' in navigator) {
     .catch(err => console.error('❌ Erro SW:', err));
 }
 </script>
-<!-- ========================================= -->
 
 </body>
 </html>
