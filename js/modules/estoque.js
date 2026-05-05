@@ -1,4 +1,4 @@
-// modules/estoque.js - Módulo de Estoque (com margem e caixa)
+// modules/estoque.js - Módulo de Estoque (completo e estável)
 window.EstoqueModule = {
   editingId: null,
 
@@ -11,7 +11,6 @@ window.EstoqueModule = {
     this.loadEventListeners();
   },
 
-  // Calcula preço de venda baseado no custo e margem
   calcularPrecoVenda() {
     const custo = parseFloat(document.getElementById('est_preco_custo')?.value) || 0;
     const margem = parseFloat(document.getElementById('est_margem')?.value) || 0;
@@ -23,7 +22,6 @@ window.EstoqueModule = {
   },
 
   loadEventListeners() {
-    // Botões
     const btnSalvar = document.getElementById('btnEstSalvar');
     if (btnSalvar) btnSalvar.onclick = () => this.salvarPeca();
 
@@ -33,11 +31,9 @@ window.EstoqueModule = {
     const btnRegistrarMov = document.getElementById('btnEstRegistrarMov');
     if (btnRegistrarMov) btnRegistrarMov.onclick = () => this.registrarMovimento();
 
-    // Select de peça para mostrar estoque atual
     const selectPeca = document.getElementById('mov_peca');
     if (selectPeca) selectPeca.onchange = () => this.mostrarEstoqueAtual();
 
-    // Filtros
     const searchInput = document.getElementById('estSearch');
     if (searchInput) searchInput.oninput = () => this.renderPecas();
 
@@ -245,7 +241,6 @@ window.EstoqueModule = {
       return;
     }
 
-    // Atualiza quantidade da peça
     peca.quantidade = tipo === 'entrada' ? peca.quantidade + quantidade : peca.quantidade - quantidade;
     window.Storage.savePecas();
 
@@ -263,7 +258,6 @@ window.EstoqueModule = {
     window.State.movimentosEstoque.unshift(movimento);
     window.Storage.saveMovimentos();
 
-    // Limpa campos
     document.getElementById('mov_qtd').value = '1';
     document.getElementById('mov_os').value = '';
     document.getElementById('mov_obs').value = '';
@@ -275,7 +269,6 @@ window.EstoqueModule = {
 
     showToast(`${tipo === 'entrada' ? 'Entrada' : 'Saída'} registrada: ${quantidade}x ${peca.descricao}`);
 
-    // Verifica estoque baixo
     if (peca.quantidade <= peca.minimo && peca.quantidade > 0) {
       this.criarNotificacaoEstoque('Estoque baixo', `${peca.codigo} — ${peca.descricao} (${peca.quantidade}/${peca.minimo})`);
     }
@@ -290,8 +283,8 @@ window.EstoqueModule = {
   },
 
   criarNotificacaoEstoque(titulo, descricao) {
-    if (window.NotificacoesModule) {
-      window.NotificacoesModule.adicionar({
+    if (window.Notificacoes) {
+      window.Notificacoes.adicionar({
         id: `estoque_${Date.now()}`,
         titulo: titulo,
         descricao: descricao,
@@ -321,7 +314,7 @@ window.EstoqueModule = {
     tbody.innerHTML = '';
 
     if (!filtered.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-center p-4 text-[var(--muted)]">Nenhuma peça encontrada</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center p-4 text-[var(--muted)]">Nenhuma peça encontrada</td><tr>';
       return;
     }
 
