@@ -1,4 +1,4 @@
-// modules/agendamentos.js - Módulo de Agendamentos (com notificações)
+// modules/agendamentos.js - Módulo de Agendamentos (com notificação push)
 window.AgendamentosModule = {
   init() {
     this.carregar();
@@ -149,17 +149,28 @@ window.AgendamentosModule = {
     this.atualizarLista();
     showToast('Agendamento salvo com sucesso!');
 
-    // ========== NOTIFICAR O TÉCNICO (se for diferente do usuário logado) ==========
+    // ========== ENVIAR NOTIFICAÇÃO PUSH PARA O TÉCNICO ==========
     if (agendamento.tecnico && agendamento.tecnico !== window.Auth.currentUser?.login) {
-      if (window.Notificacoes) {
-        window.Notificacoes.adicionar(
-          'Novo agendamento',
-          `Cliente: ${agendamento.cliente} - Data: ${agendamento.data} às ${agendamento.horario}`,
-          'agendamento',
-          { id: agendamento.id }
+      if (window.enviarPushLift) {
+        window.enviarPushLift(
+          '📅 Novo agendamento',
+          `${agendamento.cliente} - ${agendamento.data} às ${agendamento.horario}`,
+          '/lift-os/?tab=agendamentos'
         );
       }
+      // Notificação local (sino)
+      if (window.Notificacoes) {
+        window.Notificacoes.adicionar({
+          id: Date.now(),
+          titulo: 'Novo agendamento',
+          descricao: `${agendamento.cliente} - ${agendamento.data} às ${agendamento.horario}`,
+          tipo: 'agendamento',
+          timestamp: Date.now(),
+          lida: false
+        });
+      }
     }
+    // ============================================================
 
     if (window.GoogleSheets && window.Auth.can('sincronizar')) {
       await window.GoogleSheets.syncAgendamento(agendamento);
