@@ -1,4 +1,4 @@
-// modules/clientes.js - Módulo de Clientes (com carregamento de equipamento)
+// modules/clientes.js - Fluxo: Cliente → Equipamento → OS/Orçamento → Carregar dados
 window.ClientesModule = {
   editingId: null,
   clienteSelecionado: null,
@@ -83,22 +83,31 @@ window.ClientesModule = {
     this.renderTable(filtered);
   },
 
+  // PASSO 1: Selecionar cliente
   selecionarCliente(id) {
     const cliente = window.State.clients.find(c => c.id === id);
     if (!cliente) return;
     this.clienteSelecionado = cliente;
     
     const equipamentos = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
+    
+    // Se não tem equipamento, vai direto para escolha OS/Orçamento
     if (equipamentos.length === 0) {
-      this.mostrarModalEscolha(cliente, null);
-    } else if (equipamentos.length === 1) {
-      this.mostrarModalEscolha(cliente, equipamentos[0]);
-    } else {
-      this.mostrarModalEquipamentos(cliente, equipamentos);
+      this.mostrarModalEscolha();
+    } 
+    // Se tem um equipamento, seleciona automaticamente
+    else if (equipamentos.length === 1) {
+      this.equipamentoSelecionado = equipamentos[0];
+      this.mostrarModalEscolha();
+    } 
+    // Se tem vários equipamentos, mostra modal para escolher
+    else {
+      this.mostrarModalEquipamentos(equipamentos);
     }
   },
 
-  mostrarModalEquipamentos(cliente, equipamentos) {
+  // PASSO 2: Mostrar equipamentos disponíveis (se mais de um)
+  mostrarModalEquipamentos(equipamentos) {
     let modal = document.getElementById('equipModal');
     const list = document.getElementById('equipList');
     if (!modal || !list) return;
@@ -114,16 +123,21 @@ window.ClientesModule = {
         <div class="text-sm text-[var(--muted)]">Série: ${window.esc(eq.serie || 'N/A')} | Combustível: ${window.esc(eq.combustivel || 'N/A')}</div>
       `;
       div.onclick = () => {
+        this.equipamentoSelecionado = eq;
         modal.style.display = 'none';
-        this.mostrarModalEscolha(cliente, eq);
+        this.mostrarModalEscolha();
       };
       list.appendChild(div);
     });
   },
 
-  mostrarModalEscolha(cliente, equipamento) {
+  // PASSO 3: Escolher entre OS ou Orçamento
+  mostrarModalEscolha() {
     let modal = document.getElementById('modalEscolhaCliente');
     if (modal) modal.remove();
+    
+    const cliente = this.clienteSelecionado;
+    const equipamento = this.equipamentoSelecionado;
     
     modal = document.createElement('div');
     modal.id = 'modalEscolhaCliente';
@@ -135,7 +149,7 @@ window.ClientesModule = {
         ${equipamento ? `<p class="text-sm text-[var(--success)] mb-4">Equipamento: ${window.esc(equipamento.marca)} ${window.esc(equipamento.modelo || '')}</p>` : '<p class="text-sm text-[var(--muted)] mb-4">Nenhum equipamento cadastrado</p>'}
         <p class="text-sm text-[var(--muted)] mb-6">O que deseja fazer?</p>
         <div class="flex flex-col gap-3">
-          <button id="escolhaOS" class="btn btn-primary w-full"><i class="fas fa-clipboard-list"></i> Abrir OS</button>
+          <button id="escolhaOS" class="btn btn-primary w-full"><i class="fas fa-clipboard-list"></i> Abrir Ordem de Serviço</button>
           <button id="escolhaOrcamento" class="btn btn-info w-full"><i class="fas fa-file-invoice-dollar"></i> Criar Orçamento</button>
           <button id="escolhaCancelar" class="btn btn-secondary w-full">Cancelar</button>
         </div>
@@ -145,16 +159,20 @@ window.ClientesModule = {
     
     document.getElementById('escolhaOS').onclick = () => {
       modal.remove();
-      this.abrirOS(cliente, equipamento);
+      this.carregarOS();
     };
     document.getElementById('escolhaOrcamento').onclick = () => {
       modal.remove();
-      this.abrirOrcamento(cliente, equipamento);
+      this.carregarOrcamento();
     };
     document.getElementById('escolhaCancelar').onclick = () => modal.remove();
   },
 
-  async abrirOS(cliente, equipamento) {
+  // PASSO 4a: Carregar dados na OS
+  async carregarOS() {
+    const cliente = this.clienteSelecionado;
+    const equipamento = this.equipamentoSelecionado;
+    
     await window.PageLoader.load('os');
     setTimeout(() => {
       // Dados do cliente
@@ -199,10 +217,18 @@ window.ClientesModule = {
       }
       
       showToast(`Cliente ${cliente.nome} carregado na OS`);
+      
+      // Limpa seleções
+      this.clienteSelecionado = null;
+      this.equipamentoSelecionado = null;
     }, 300);
   },
 
-  async abrirOrcamento(cliente, equipamento) {
+  // PASSO 4b: Carregar dados no Orçamento
+  async carregarOrcamento() {
+    const cliente = this.clienteSelecionado;
+    const equipamento = this.equipamentoSelecionado;
+    
     await window.PageLoader.load('orcamento');
     setTimeout(() => {
       // Dados do cliente
@@ -222,6 +248,10 @@ window.ClientesModule = {
       }
       
       showToast(`Cliente ${cliente.nome} carregado no orçamento`);
+      
+      // Limpa seleções
+      this.clienteSelecionado = null;
+      this.equipamentoSelecionado = null;
     }, 300);
   },
 
@@ -229,6 +259,24 @@ window.ClientesModule = {
     if (!window.Auth.can('clientes_cadastrar')) { showToast('Sem permissão', true); return; }
     const nome = document.getElementById('cad_nome')?.value.trim();
     if (!nome) { showToast('Nome obrigatório', true); return; }
+    
+    const equipamentos = [];
+    const equipItems = document.querySelectorAll('#equipamentosList .equip-item');
+    equipItems.forEach(item => {
+      const marcaSelect = item.querySelector('.equip-marca');
+      const outraMarca = item.querySelector('.outra-marca');
+      let marca = marcaSelect?.value || '';
+      if (marca === 'OUTRA' && outraMarca) marca = outraMarca.value.toUpperCase();
+      if (marca) {
+        equipamentos.push({
+          marca: marca,
+          modelo: item.querySelector('.equip-modelo')?.value || '',
+          serie: item.querySelector('.equip-serie')?.value || '',
+          qtd: parseInt(item.querySelector('.equip-qtd')?.value) || 1,
+          combustivel: item.querySelector('.equip-combustivel')?.value || ''
+        });
+      }
+    });
     
     const cliente = {
       id: this.editingId || Date.now(),
@@ -239,7 +287,7 @@ window.ClientesModule = {
       telefone: document.getElementById('cad_telefone')?.value || '',
       whatsapp: document.getElementById('cad_whatsapp')?.value || '',
       email: document.getElementById('cad_email')?.value || '',
-      equipamentos: []
+      equipamentos: equipamentos
     };
     
     if (this.editingId) {
@@ -271,6 +319,12 @@ window.ClientesModule = {
     document.getElementById('cad_telefone').value = cliente.telefone || '';
     document.getElementById('cad_whatsapp').value = cliente.whatsapp || '';
     document.getElementById('cad_email').value = cliente.email || '';
+    
+    const container = document.getElementById('equipamentosList');
+    if (container) container.innerHTML = '';
+    const equipamentos = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
+    equipamentos.forEach(eq => this.adicionarCampoEquipamento(eq.marca, eq.modelo, eq.serie, eq.qtd, eq.combustivel));
+    
     document.getElementById('cad_btnCancelar').style.display = 'inline-flex';
   },
 
@@ -293,13 +347,59 @@ window.ClientesModule = {
   clearForm() {
     const fields = ['cad_nome', 'cad_cnpj', 'cad_endereco', 'cad_cidade', 'cad_telefone', 'cad_whatsapp', 'cad_email'];
     fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const container = document.getElementById('equipamentosList');
+    if (container) container.innerHTML = '';
+  },
+
+  adicionarCampoEquipamento(marca, modelo, serie, qtd, combustivel) {
+    const container = document.getElementById('equipamentosList');
+    if (!container) return;
+    const div = document.createElement('div');
+    div.className = 'equip-item grid grid-cols-1 md:grid-cols-6 gap-2 p-2 bg-[var(--bg-secondary)] rounded-lg mb-2';
+    const marcasOptions = `
+      <option value="">Selecione</option>
+      <option value="TOYOTA" ${marca === 'TOYOTA' ? 'selected' : ''}>TOYOTA</option>
+      <option value="CLARK" ${marca === 'CLARK' ? 'selected' : ''}>CLARK</option>
+      <option value="BYD" ${marca === 'BYD' ? 'selected' : ''}>BYD</option>
+      <option value="PALETRANS" ${marca === 'PALETRANS' ? 'selected' : ''}>PALETRANS</option>
+      <option value="LINDE" ${marca === 'LINDE' ? 'selected' : ''}>LINDE</option>
+      <option value="HYSTER" ${marca === 'HYSTER' ? 'selected' : ''}>HYSTER</option>
+      <option value="YALE" ${marca === 'YALE' ? 'selected' : ''}>YALE</option>
+      <option value="CATERPILLAR" ${marca === 'CATERPILLAR' ? 'selected' : ''}>CATERPILLAR</option>
+      <option value="KOMATSU" ${marca === 'KOMATSU' ? 'selected' : ''}>KOMATSU</option>
+      <option value="MITSUBISHI" ${marca === 'MITSUBISHI' ? 'selected' : ''}>MITSUBISHI</option>
+      <option value="NISSAN" ${marca === 'NISSAN' ? 'selected' : ''}>NISSAN</option>
+      <option value="OUTRA" ${marca === 'OUTRA' || (marca && !['TOYOTA','CLARK','BYD','PALETRANS','LINDE','HYSTER','YALE','CATERPILLAR','KOMATSU','MITSUBISHI','NISSAN'].includes(marca)) ? 'selected' : ''}>OUTRA</option>
+    `;
+    div.innerHTML = `
+      <select class="form-input equip-marca">${marcasOptions}</select>
+      <div class="outra-marca-container" style="display:${marca && !['TOYOTA','CLARK','BYD','PALETRANS','LINDE','HYSTER','YALE','CATERPILLAR','KOMATSU','MITSUBISHI','NISSAN'].includes(marca) ? 'block' : 'none'}">
+        <input type="text" placeholder="Digite a marca" class="form-input outra-marca" value="${window.esc(marca && !['TOYOTA','CLARK','BYD','PALETRANS','LINDE','HYSTER','YALE','CATERPILLAR','KOMATSU','MITSUBISHI','NISSAN'].includes(marca) ? marca : '')}">
+      </div>
+      <input type="text" placeholder="Modelo" class="form-input equip-modelo" value="${window.esc(modelo || '')}">
+      <input type="text" placeholder="Série" class="form-input equip-serie" value="${window.esc(serie || '')}">
+      <input type="number" placeholder="Qtd" class="form-input equip-qtd" value="${qtd || 1}">
+      <select class="form-input equip-combustivel">
+        <option value="">Combustível</option>
+        <option value="eletrico" ${combustivel === 'eletrico' ? 'selected' : ''}>Elétrico</option>
+        <option value="diesel" ${combustivel === 'diesel' ? 'selected' : ''}>Diesel</option>
+        <option value="gasolina" ${combustivel === 'gasolina' ? 'selected' : ''}>Gasolina</option>
+        <option value="glp" ${combustivel === 'glp' ? 'selected' : ''}>GLP</option>
+      </select>
+      <button type="button" class="text-red-500" onclick="this.closest('.equip-item').remove()"><i class="fas fa-trash"></i></button>
+    `;
+    const marcaSelect = div.querySelector('.equip-marca');
+    const outraDiv = div.querySelector('.outra-marca-container');
+    marcaSelect.onchange = () => { outraDiv.style.display = marcaSelect.value === 'OUTRA' ? 'block' : 'none'; };
+    container.appendChild(div);
   },
 
   exportCSV() {
     if (!window.Auth.can('clientes_exportar_csv')) return;
-    let csv = "Nome,CNPJ,Endereco,Cidade,Telefone,WhatsApp,E-mail\n";
+    let csv = "Nome,CNPJ,Endereco,Cidade,Telefone,WhatsApp,E-mail,Marcas\n";
     window.State.clients.forEach(c => {
-      csv += `"${c.nome || ''}",${c.cnpj || ''},"${c.endereco || ''}","${c.cidade || ''}",${c.telefone || ''},${c.whatsapp || ''},${c.email || ''}\n`;
+      const marcas = (c.equipamentos || []).map(e => e.marca).join(';');
+      csv += `"${c.nome || ''}",${c.cnpj || ''},"${c.endereco || ''}","${c.cidade || ''}",${c.telefone || ''},${c.whatsapp || ''},${c.email || ''},"${marcas}"\n`;
     });
     const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
