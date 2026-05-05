@@ -1,4 +1,4 @@
-// modules/historico.js - Módulo de Histórico
+// modules/historico.js - Módulo de Histórico (com exclusão permanente)
 window.HistoricoModule = {
   init() {
     this.render();
@@ -9,19 +9,14 @@ window.HistoricoModule = {
   loadEventListeners() {
     const searchInput = document.getElementById('historicoSearch');
     if (searchInput) searchInput.oninput = () => this.render();
-
     const filtroTipo = document.getElementById('historicoFiltroTipo');
     if (filtroTipo) filtroTipo.onchange = () => this.render();
-
     const filtroStatus = document.getElementById('historicoFiltroStatus');
     if (filtroStatus) filtroStatus.onchange = () => this.render();
-
     const btnExportar = document.getElementById('btnExportarCSVHistorico');
     if (btnExportar) btnExportar.onclick = () => this.exportCSV();
-
     const btnImportar = document.getElementById('btnImportarCSVHistorico');
     if (btnImportar) btnImportar.onclick = () => this.importCSV();
-
     const btnLimpar = document.getElementById('btnLimparHistorico');
     if (btnLimpar) btnLimpar.onclick = () => this.clear();
   },
@@ -30,14 +25,12 @@ window.HistoricoModule = {
     const total = window.State.osHistory.length;
     const stats = { abertura: 0, execucao: 0, finalizacao: 0, fechada: 0, aprovada: 0 };
     let esteMes = 0;
-
     const agora = new Date();
     const mesAtual = agora.getMonth();
     const anoAtual = agora.getFullYear();
 
     window.State.osHistory.forEach(os => {
       if (stats[os.status] !== undefined) stats[os.status]++;
-
       if (os.dataOS) {
         const data = new Date(os.dataOS + 'T12:00:00');
         if (data.getMonth() === mesAtual && data.getFullYear() === anoAtual) esteMes++;
@@ -112,7 +105,6 @@ window.HistoricoModule = {
   verDetalhe(numero) {
     const os = window.State.osHistory.find(o => o.numeroOS === numero);
     if (!os) return;
-
     if (window.OSModule) {
       window.OSModule.carregarOS(os);
       window.PageLoader.load('os');
@@ -123,20 +115,43 @@ window.HistoricoModule = {
     this.verDetalhe(numero);
   },
 
-  excluir(numero) {
+  // EXCLUIR: Remove da planilha e do localStorage
+  async excluir(numero) {
     if (!window.Auth.can('historico_excluir')) {
       showToast('Apenas administrador pode excluir', true);
       return;
     }
 
-    if (!confirm(`Excluir OS ${numero} permanentemente?`)) return;
+    if (!confirm(`⚠️ ATENÇÃO: Excluir permanentemente a OS ${numero}?\n\nEssa ação não pode ser desfeita e removerá da planilha.`)) {
+      return;
+    }
 
-    window.State.osHistory = window.State.osHistory.filter(o => o.numeroOS !== numero);
-    window.Storage.saveOSHistory();
-    this.render();
-    this.updateStats();
-    if (window.ClientesModule) window.ClientesModule.updateStats();
-    showToast('OS excluída');
+    try {
+      // 1. Remove do localStorage
+      window.State.osHistory = window.State.osHistory.filter(o => o.numeroOS !== numero);
+      window.Storage.saveOSHistory();
+
+      // 2. Remove da planilha via Google Sheets
+      if (window.GoogleSheets && window.Auth.can('sincronizar')) {
+        const result = await window.GoogleSheets.postData('deleteOS', { numeroOS: numero });
+        if (result) {
+          showToast(`OS ${numero} excluída da planilha!`);
+        } else {
+          showToast(`OS ${numero} excluída localmente, mas falhou ao sincronizar`, true);
+        }
+      } else {
+        showToast(`OS ${numero} excluída localmente`);
+      }
+
+      // 3. Atualiza a interface
+      this.render();
+      this.updateStats();
+      if (window.ClientesModule) window.ClientesModule.updateStats();
+
+    } catch (error) {
+      console.error('Erro ao excluir:', error);
+      showToast('Erro ao excluir OS', true);
+    }
   },
 
   exportCSV() {
@@ -144,12 +159,10 @@ window.HistoricoModule = {
       showToast('Apenas administrador pode exportar', true);
       return;
     }
-
     let csv = "OS,Data,Cliente,Status,Tipo,Horas,Total\n";
     window.State.osHistory.forEach(os => {
       csv += `${os.numeroOS || ''},${os.dataOS || ''},"${os.cliente || ''}",${window.Utils.formatStatus(os.status)},${os.tipoChamado || ''},${os.horasTotais || ''},${os.totalGeral || ''}\n`;
     });
-
     const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -163,7 +176,6 @@ window.HistoricoModule = {
       showToast('Apenas administrador pode importar', true);
       return;
     }
-
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.csv';
@@ -173,7 +185,6 @@ window.HistoricoModule = {
       reader.onload = (ev) => {
         const lines = ev.target.result.split('\n');
         let importados = 0;
-
         for (let i = 1; i < lines.length; i++) {
           if (!lines[i].trim()) continue;
           const cols = window.Utils.parseCSVLine(lines[i]);
@@ -212,7 +223,6 @@ window.HistoricoModule = {
             importados++;
           }
         }
-
         window.Storage.saveOSHistory();
         this.render();
         this.updateStats();
@@ -224,19 +234,31 @@ window.HistoricoModule = {
     input.click();
   },
 
-  clear() {
+  async clear() {
     if (!window.Auth.can('historico_limpar')) {
       showToast('Apenas administrador pode limpar', true);
       return;
     }
+    if (!confirm('⚠️ ATENÇÃO: Isso irá apagar TODO o histórico de OS.\n\nEsta ação não pode ser desfeita. Confirmar?')) return;
 
-    if (!confirm('⚠️ ATENÇÃO: Isso irá apagar TODO o histórico de OS. Esta ação não pode ser desfeita. Confirmar?')) return;
+    try {
+      // Limpa local
+      const total = window.State.osHistory.length;
+      window.State.osHistory = [];
+      window.Storage.saveOSHistory();
 
-    window.State.osHistory = [];
-    window.Storage.saveOSHistory();
-    this.render();
-    this.updateStats();
-    if (window.ClientesModule) window.ClientesModule.updateStats();
-    showToast('Histórico limpo');
+      // Sincroniza exclusão com planilha (opcional: enviar todos os IDs para deletar)
+      if (window.GoogleSheets && window.Auth.can('sincronizar')) {
+        // Você pode implementar uma ação 'clearAllOS' no backend se necessário
+        showToast(`${total} OS removidas localmente. Sincronização manual necessária.`);
+      }
+
+      this.render();
+      this.updateStats();
+      if (window.ClientesModule) window.ClientesModule.updateStats();
+      showToast(`${total} OS removidas`);
+    } catch (error) {
+      showToast('Erro ao limpar', true);
+    }
   }
 };
