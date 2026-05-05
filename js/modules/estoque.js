@@ -1,4 +1,4 @@
-// modules/estoque.js - Módulo de Estoque
+// modules/estoque.js - Módulo de Estoque (com margem e caixa)
 window.EstoqueModule = {
   editingId: null,
 
@@ -9,6 +9,17 @@ window.EstoqueModule = {
     this.preencherSelectPecas();
     this.preencherOSList();
     this.loadEventListeners();
+  },
+
+  // Calcula preço de venda baseado no custo e margem
+  calcularPrecoVenda() {
+    const custo = parseFloat(document.getElementById('est_preco_custo')?.value) || 0;
+    const margem = parseFloat(document.getElementById('est_margem')?.value) || 0;
+    const venda = custo * (1 + margem / 100);
+    document.getElementById('est_preco_venda').value = venda.toFixed(2);
+    if (margem > 0 && custo > 0) {
+      showToast(`Preço de venda calculado: R$ ${venda.toFixed(2)}`);
+    }
   },
 
   loadEventListeners() {
@@ -47,6 +58,9 @@ window.EstoqueModule = {
   salvarPeca() {
     const codigo = document.getElementById('est_codigo')?.value.trim();
     const descricao = document.getElementById('est_descricao')?.value.trim();
+    const custo = parseFloat(document.getElementById('est_preco_custo')?.value) || 0;
+    const margem = parseFloat(document.getElementById('est_margem')?.value) || 30;
+    const venda = parseFloat(document.getElementById('est_preco_venda')?.value) || (custo * (1 + margem / 100));
 
     if (!codigo) {
       showToast('Código é obrigatório', true);
@@ -65,25 +79,23 @@ window.EstoqueModule = {
       unidade: document.getElementById('est_unidade')?.value || 'un',
       quantidade: parseInt(document.getElementById('est_qtd')?.value) || 0,
       minimo: parseInt(document.getElementById('est_minimo')?.value) || 2,
-      preco_custo: parseFloat(document.getElementById('est_preco_custo')?.value) || 0,
-      preco_venda: parseFloat(document.getElementById('est_preco_venda')?.value) || 0,
+      preco_custo: custo,
+      margem: margem,
+      preco_venda: venda,
       aplicacao: document.getElementById('est_aplicacao')?.value || ''
     };
 
-    // Verifica se código já existe (apenas para novas peças)
-    if (!this.editingId) {
+    const editId = parseInt(document.getElementById('est_editId')?.value);
+    if (editId) {
+      const index = window.State.pecas.findIndex(p => p.id === editId);
+      if (index >= 0) window.State.pecas[index] = peca;
+      showToast('Peça atualizada');
+    } else {
       const existing = window.State.pecas.find(p => p.codigo === codigo);
       if (existing) {
         showToast('Código já existe', true);
         return;
       }
-    }
-
-    if (this.editingId) {
-      const index = window.State.pecas.findIndex(p => p.id === this.editingId);
-      if (index >= 0) window.State.pecas[index] = peca;
-      showToast('Peça atualizada');
-    } else {
       window.State.pecas.push(peca);
       showToast('Peça cadastrada');
     }
@@ -112,6 +124,7 @@ window.EstoqueModule = {
     document.getElementById('est_qtd').value = peca.quantidade;
     document.getElementById('est_minimo').value = peca.minimo;
     document.getElementById('est_preco_custo').value = peca.preco_custo;
+    document.getElementById('est_margem').value = peca.margem || 30;
     document.getElementById('est_preco_venda').value = peca.preco_venda;
     document.getElementById('est_aplicacao').value = peca.aplicacao || '';
 
@@ -132,6 +145,7 @@ window.EstoqueModule = {
     document.getElementById('est_qtd').value = '0';
     document.getElementById('est_minimo').value = '2';
     document.getElementById('est_preco_custo').value = '0';
+    document.getElementById('est_margem').value = '30';
     document.getElementById('est_preco_venda').value = '0';
     document.getElementById('est_aplicacao').value = '';
     document.getElementById('est_categoria').value = 'hidraulico';
@@ -146,7 +160,6 @@ window.EstoqueModule = {
 
   excluirPeca(id) {
     if (!confirm('Excluir esta peça permanentemente?')) return;
-
     window.State.pecas = window.State.pecas.filter(p => p.id !== id);
     window.Storage.savePecas();
     this.renderPecas();
