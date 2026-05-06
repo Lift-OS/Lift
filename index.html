@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+  
+  <!-- ========== PWA MANIFEST ========== -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#f97316">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Lift OS">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <!-- ================================= -->
+  
+  <title>Lift OS - Profissional v6.0</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- TELA DE LOGIN -->
+<div id="loginScreen" class="login-container">
+  <div class="login-card">
+    <div class="flex justify-center mb-4">
+      <div class="w-16 h-16 bg-gradient-to-br from-[var(--accent)] to-[var(--accent-light)] rounded-2xl flex items-center justify-center">
+        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+        </svg>
+      </div>
+    </div>
+    <h1 class="text-3xl text-center text-[var(--accent)] font-bold mb-2">Lift OS 📝</h1>
+    <p class="text-center text-[var(--muted)] text-sm mb-6">Sistema de Ordem de Serviço</p>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">Usuário</label>
+        <input type="text" id="loginUsername" class="form-input" placeholder="admin ou tecnico">
+      </div>
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">Senha</label>
+        <input type="password" id="loginPassword" class="form-input" placeholder="admin123 ou 123456" onkeypress="if(event.key==='Enter')Auth.login()">
+      </div>
+      <button onclick="Auth.login()" class="btn btn-primary w-full"><i class="fas fa-sign-in-alt"></i> Entrar</button>
+      <a href="javascript:void(0)" onclick="Auth.recoverPassword()" class="btn btn-whatsapp w-full text-center no-underline"><i class="fab fa-whatsapp"></i> Esqueci minha senha</a>
+      <div id="loginErrorMessage" class="text-[var(--danger)] text-sm text-center hidden"></div>
+    </div>
+    <div class="mt-6 text-center text-xs text-[var(--muted)]">
+      <p>Site: <strong class="text-[var(--accent)]">www.LiftOS.com.br</strong></p>
+      <p class="mt-1">Suporte Técnico <strong>(98)98824-8877</strong></p>
+    </div>
+  </div>
+</div>
+
+<!-- APP PRINCIPAL -->
+<div id="appContainer" style="display:none">
+  <!-- Header -->
+  <header class="no-print border-b border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur-sm sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3">
+      <div class="flex justify-between items-center flex-wrap gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-gradient-to-br from-[var(--accent)] to-[var(--accent-light)] rounded-xl flex items-center justify-center">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold text-[var(--accent)]">Lift OS 📝</h1>
+            <p class="text-xs text-[var(--muted)]">Sistema de O.S - v6.0</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <!-- NOTIFICAÇÕES -->
+          <div class="notif-widget" id="notifWidget">
+            <div class="notif-bell" onclick="Notificacoes.toggleDropdown()">
+              <i class="fas fa-bell"></i>
+              <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+            </div>
+            <div class="notif-dropdown" id="notifDropdown">
+              <div class="notif-dropdown-header">
+                <span><i class="fas fa-bell"></i> Notificações</span>
+                <button onclick="Notificacoes.marcarTodasLidas()">Marcar todas</button>
+              </div>
+              <div id="notifList" class="notif-dropdown-body"></div>
+            </div>
+          </div>
+
+          <!-- USUÁRIOS ONLINE -->
+          <div class="online-widget" id="onlineWidget">
+            <div class="online-badge" id="onlineBadge" onclick="OnlineUsers.toggleDropdown()">
+              <i class="fas fa-wifi"></i>
+              <span class="online-label-text">Online</span>
+              <span class="online-count" id="onlineCount">0</span>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="online-dropdown" id="onlineDropdown">
+              <div class="online-dropdown-header">
+                <span><i class="fas fa-signal"></i> Usuários</span>
+                <button class="refresh-btn" onclick="event.stopPropagation();OnlineUsers.fetch()">
+                  <i class="fas fa-sync-alt"></i>
+                </button>
+              </div>
+              <div id="onlineUserList"></div>
+            </div>
+          </div>
+
+          <!-- Widget de Temas -->
+          <div class="online-widget" id="themeWidget">
+            <div class="theme-toggle" id="themeToggle">
+              <i class="fas fa-palette"></i>
+              <span id="themeName">Tema</span>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="theme-dropdown" id="themeDropdown">
+              <div class="theme-option" data-theme="dark">
+                <i class="fas fa-moon"></i> Escuro
+              </div>
+              <div class="theme-option" data-theme="light">
+                <i class="fas fa-sun"></i> Claro
+              </div>
+              <div class="theme-option" data-theme="blue">
+                <i class="fas fa-water"></i> Azul
+              </div>
+              <div class="theme-option" data-theme="green">
+                <i class="fas fa-leaf"></i> Verde
+              </div>
+            </div>
+          </div>
+          
+          <!-- ÁREA DO USUÁRIO -->
+          <div class="user-area flex items-center gap-2 bg-[var(--bg-secondary)] px-4 py-2 rounded-full">
+            <i class="fas fa-user-circle text-[var(--accent)]"></i>
+            <span id="currentUserName" class="text-sm font-medium">Carregando...</span>
+            <span id="currentUserNivel" class="text-xs px-2 py-0.5 rounded-full font-bold"></span>
+            <div class="w-px h-5 bg-[var(--border)]"></div>
+            <button onclick="Auth.logout()" class="text-xs text-[var(--muted)] hover:text-[var(--danger)]"><i class="fas fa-sign-out-alt"></i> Sair</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAVEGAÇÃO -->
+  <nav class="main-nav no-print">
+    <button onclick="PageLoader.load('os')" class="nav-btn active" data-page="os"><i class="fas fa-clipboard-list"></i> O.S</button>
+    <button onclick="PageLoader.load('orcamento')" class="nav-btn" data-page="orcamento"><i class="fas fa-file-invoice-dollar"></i> Orçamento</button>
+    <button onclick="PageLoader.load('estoque')" class="nav-btn" data-page="estoque"><i class="fas fa-boxes"></i> Estoque</button>
+    <button onclick="PageLoader.load('clientes')" class="nav-btn" data-page="clientes"><i class="fas fa-users"></i> Clientes</button>
+    <button onclick="PageLoader.load('historico')" class="nav-btn" data-page="historico"><i class="fas fa-history"></i> Histórico</button>
+    <button onclick="PageLoader.load('checklist')" class="nav-btn" data-page="checklist"><i class="fas fa-check-double"></i> Checklist</button>
+    <button id="navAgendamentos" onclick="PageLoader.load('agendamentos')" class="nav-btn" data-page="agendamentos" style="display:none"><i class="fas fa-calendar-alt"></i> Agendamentos</button>
+    <button id="navJornada" onclick="PageLoader.load('jornada')" class="nav-btn" data-page="jornada" style="display:none"><i class="fas fa-truck-moving"></i> Minha Jornada</button>
+    <button id="navPermissoes" onclick="PageLoader.load('permissoes')" class="nav-btn" data-page="permissoes" style="display:none"><i class="fas fa-lock"></i> Permissões</button>
+    <button id="navUsuarios" onclick="PageLoader.load('usuarios')" class="nav-btn" data-page="usuarios" style="display:none"><i class="fas fa-users-cog"></i> Usuários</button>
+  </nav>
+
+  <!-- PÁGINAS DINÂMICAS -->
+  <main id="pageContainer" class="max-w-7xl mx-auto px-4 py-6">
+    <div class="text-center py-20 text-[var(--muted)]">
+      <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+      <p>Carregando...</p>
+    </div>
+  </main>
+</div>
+
+<!-- TOAST -->
+<div id="toastCenter" class="toast-center">
+  <i class="fas fa-check-circle text-green-500 text-xl"></i>
+  <span id="toastMessage">Operação realizada</span>
+</div>
+
+<!-- MODAIS GLOBAIS -->
+<div id="orcDetalheModal" class="modal" style="display:none">
+  <div class="modal-content bg-[var(--card)] rounded-2xl p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto">
+    <div id="orcDetalheConteudo"></div>
+    <button onclick="document.getElementById('orcDetalheModal').style.display='none'" class="btn btn-secondary w-full mt-4">Fechar</button>
+  </div>
+</div>
+<div id="equipModal" class="modal" style="display:none">
+  <div class="modal-content bg-[var(--card)] rounded-2xl p-6 max-w-md w-full">
+    <div class="modal-title text-lg font-bold mb-4"><i class="fas fa-forklift"></i> Selecione o Equipamento</div>
+    <div id="equipList"></div>
+    <button onclick="document.getElementById('equipModal').style.display='none'" class="btn btn-secondary w-full mt-3">Cancelar</button>
+  </div>
+</div>
+
+<!-- ========== SCRIPTS ========== -->
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/google-sheets.js"></script>
+<script src="js/modules/signature.js"></script>
+<script src="js/modules/signature-orc.js"></script>
+<script src="js/modules/os.js"></script>
+<script src="js/modules/orcamento.js"></script>
+<script src="js/modules/estoque.js"></script>
+<script src="js/modules/clientes.js"></script>
+<script src="js/modules/checklist.js"></script>
+<script src="js/modules/agendamentos.js"></script>
+<script src="js/modules/jornada.js"></script>
+<script src="js/modules/historico.js"></script>
+<script src="js/modules/permissoes.js"></script>
+<script src="js/modules/usuarios.js"></script>
+<script src="js/modules/online-users.js"></script>
+<script src="js/modules/notificacoes.js"></script>
+<script src="js/modules/theme.js"></script>
+<script src="js/heartbeat.js"></script>
+<script src="js/app.js"></script>
+
+<!-- ========== SERVICE WORKER (PWA) ========== -->
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/lift-os/sw.js')
+    .then(reg => console.log('✅ Service Worker registrado', reg))
+    .catch(err => console.error('❌ Erro SW:', err));
+}
+</script>
+<!-- ========================================= -->
+
+</body>
+</html>
