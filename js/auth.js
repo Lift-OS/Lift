@@ -1,4 +1,4 @@
-// auth.js - Baseado no original funcional
+// auth.js - Sistema de autenticação
 window.Auth = {
   currentUser: null,
   inactivityTimer: null,
@@ -16,7 +16,7 @@ window.Auth = {
       historico_limpar: true, agendamentos_criar: true, agendamentos_editar: true, agendamentos_excluir: true,
       agendamentos_concluir: true, agendamentos_visualizar: true, usuarios_criar: true,
       usuarios_editar: true, usuarios_excluir: true, usuarios_visualizar: true, permissoes_editar: true,
-      jornada_registrar: false, estoque_cadastrar: true, estoque_editar: true, estoque_excluir: true,
+      jornada_registrar: true, estoque_cadastrar: true, estoque_editar: true, estoque_excluir: true,
       estoque_movimentar: true, orcamento_criar: true, orcamento_editar: true, orcamento_excluir: true,
       orcamento_aprovar: true, orcamento_visualizar: true
     },
@@ -25,13 +25,13 @@ window.Auth = {
       checklist_visualizar: true, checklist_preencher: true, fotos_horimetro: true,
       fotos_servico: true, fotos_pendencias: true, assinatura_tecnico: true, assinatura_cliente: true,
       timer_controle: true, horas_editar: true, gerar_pdf: true, enviar_email: true,
-      enviar_whatsapp: true, sincronizar: true, limpar_fila: false, baixar_dados: true, heartbeat: true,
+      enviar_whatsapp: true, sincronizar: false, limpar_fila: false, baixar_dados: false, heartbeat: true,
       clientes_cadastrar: false, clientes_editar: false, clientes_excluir: false,
       clientes_exportar_csv: false, clientes_importar_csv: false, clientes_visualizar: true,
       historico_visualizar: true, historico_excluir: false, historico_exportar_csv: false,
       historico_importar_csv: false, historico_limpar: false, agendamentos_criar: false,
       agendamentos_editar: false, agendamentos_excluir: false, agendamentos_concluir: false,
-      agendamentos_visualizar: false, usuarios_criar: false, usuarios_editar: false,
+      agendamentos_visualizar: true, usuarios_criar: false, usuarios_editar: false,
       usuarios_excluir: false, usuarios_visualizar: false, permissoes_editar: false,
       jornada_registrar: true, estoque_cadastrar: false, estoque_editar: false, estoque_excluir: false,
       estoque_movimentar: true, orcamento_criar: true, orcamento_editar: true, orcamento_excluir: false,
@@ -42,7 +42,7 @@ window.Auth = {
       checklist_visualizar: true, checklist_preencher: true, fotos_horimetro: true,
       fotos_servico: true, fotos_pendencias: true, assinatura_tecnico: true, assinatura_cliente: true,
       timer_controle: false, horas_editar: false, gerar_pdf: true, enviar_email: true,
-      enviar_whatsapp: true, sincronizar: true, limpar_fila: false, baixar_dados: true, heartbeat: false,
+      enviar_whatsapp: true, sincronizar: false, limpar_fila: false, baixar_dados: false, heartbeat: false,
       clientes_cadastrar: false, clientes_editar: false, clientes_excluir: false,
       clientes_exportar_csv: false, clientes_importar_csv: false, clientes_visualizar: true,
       historico_visualizar: true, historico_excluir: false, historico_exportar_csv: false,
@@ -58,30 +58,27 @@ window.Auth = {
 
   can(permission) {
     if (!this.currentUser) return false;
-    const nivel = this.currentUser.nivel || 'visualizador';
-    return this.permissoes[nivel] && this.permissoes[nivel][permission] === true;
+    return this.permissoes[this.currentUser.nivel]?.[permission] === true;
   },
 
-  isAdmin() { return this.currentUser && this.currentUser.nivel === 'admin'; },
-  isTecnico() { return this.currentUser && this.currentUser.nivel === 'tecnico'; },
+  isAdmin() { return this.currentUser?.nivel === 'admin'; },
+  isTecnico() { return this.currentUser?.nivel === 'tecnico'; },
 
   getUsers() {
-  let users = localStorage.getItem('LiftOS_users');
-  if (users) {
-    try { 
-      const parsed = JSON.parse(users);
-      if (Array.isArray(parsed) && parsed.length) return parsed;
-    } catch(e) {}
-  }
-  // Usuários padrão (incluindo o novo admin)
-  const defaultUsers = [
-    { id: 1, nome: 'Administrador', login: 'admin', senha: 'admin123', nivel: 'admin' },
-    { id: 2, nome: 'Técnico Principal', login: 'tecnico', senha: '123456', nivel: 'tecnico' },
-    { id: 1777598445532, nome: 'LIFT OS 🤴🏻', login: 'LiftOS', senha: 'adm1234', nivel: 'admin' }
-  ];
-  localStorage.setItem('LiftOS_users', JSON.stringify(defaultUsers));
-  return defaultUsers;
-}
+    let users = localStorage.getItem('LiftOS_users');
+    if (users) {
+      try {
+        const parsed = JSON.parse(users);
+        if (Array.isArray(parsed) && parsed.length) return parsed;
+      } catch(e) {}
+    }
+    const defaultUsers = [
+      { id: 1, nome: 'Administrador', login: 'admin', senha: 'admin123', nivel: 'admin' },
+      { id: 2, nome: 'Técnico Principal', login: 'tecnico', senha: '123456', nivel: 'tecnico' }
+    ];
+    localStorage.setItem('LiftOS_users', JSON.stringify(defaultUsers));
+    return defaultUsers;
+  },
 
   saveUsers(users) { localStorage.setItem('LiftOS_users', JSON.stringify(users)); },
 
@@ -89,18 +86,21 @@ window.Auth = {
     const login = document.getElementById('loginUsername').value.trim();
     const senha = document.getElementById('loginPassword').value;
     const errDiv = document.getElementById('loginErrorMessage');
-    if (errDiv) { errDiv.style.display = 'none'; errDiv.innerHTML = ''; }
+    if (errDiv) { errDiv.classList.add('hidden'); errDiv.innerHTML = ''; }
+    
     if (!login || !senha) {
-      if (errDiv) { errDiv.innerHTML = 'Preencha usuário e senha'; errDiv.style.display = 'block'; }
+      if (errDiv) { errDiv.innerHTML = 'Preencha usuário e senha'; errDiv.classList.remove('hidden'); }
       return;
     }
+    
     const users = this.getUsers();
     const user = users.find(u => u.login === login && u.senha === senha);
     if (!user) {
-      if (errDiv) { errDiv.innerHTML = 'Credenciais inválidas!'; errDiv.style.display = 'block'; }
+      if (errDiv) { errDiv.innerHTML = 'Credenciais inválidas!'; errDiv.classList.remove('hidden'); }
       document.getElementById('loginPassword').value = '';
       return;
     }
+    
     this.currentUser = user;
     localStorage.setItem('LiftOS_current_user', JSON.stringify(user));
     document.getElementById('loginScreen').style.display = 'none';
@@ -113,7 +113,7 @@ window.Auth = {
   },
 
   logout(reason) {
-    if (reason === 'inactivity') showToast('Sessão expirada por inatividade', true);
+    if (reason === 'inactivity') showToast('Sessão expirada', true);
     if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
     if (window.Heartbeat) window.Heartbeat.stop();
     this.currentUser = null;
@@ -157,43 +157,31 @@ window.Auth = {
 
   recoverPassword() {
     let login = document.getElementById('loginUsername').value.trim();
-    if (!login) {
-      login = prompt('Digite seu usuário:');
-      if (!login || !login.trim()) return;
-      login = login.trim();
-    }
+    if (!login) login = prompt('Digite seu usuário:');
+    if (!login) return;
     const user = this.getUsers().find(u => u.login === login);
-    if (!user) { alert(`Usuário "${login}" não encontrado.`); return; }
-    window.open(`https://wa.me/5598988248877?text=${encodeURIComponent(`Olá! *Esqueci minha senha*\n\nUsuário: *${login}*\n\nSistema de O.S.`)}`, '_blank');
+    if (!user) { alert('Usuário não encontrado'); return; }
+    window.open(`https://wa.me/5598988248877?text=${encodeURIComponent(`Esqueci minha senha - Usuário: ${login}`)}`, '_blank');
   },
 
   updateUI() {
-    const nivel = this.currentUser?.nivel || 'visualizador';
+    if (!this.currentUser) return;
+    const nivel = this.currentUser.nivel;
     const isAdmin = nivel === 'admin';
     const isTecnico = nivel === 'tecnico';
+    
     const badge = document.getElementById('currentUserNivel');
     if (badge) {
-      if (isAdmin) {
-        badge.textContent = 'ADMIN';
-        badge.style.background = 'rgba(249,115,22,.2)';
-        badge.style.color = '#fb923c';
-      } else if (isTecnico) {
-        badge.textContent = 'TÉCNICO';
-        badge.style.background = 'rgba(59,130,246,.2)';
-        badge.style.color = '#60a5fa';
-      } else {
-        badge.textContent = 'VISUALIZADOR';
-        badge.style.background = 'rgba(107,114,128,.2)';
-        badge.style.color = '#9ca3af';
-      }
+      badge.textContent = isAdmin ? 'ADMIN' : (isTecnico ? 'TÉCNICO' : 'VISUALIZADOR');
     }
-    const navAgendamentos = document.getElementById('navAgendamentos');
-    if (navAgendamentos) navAgendamentos.style.display = this.can('agendamentos_visualizar') ? 'inline-flex' : 'none';
-    const navJornada = document.getElementById('navJornada');
-    if (navJornada) navJornada.style.display = this.can('jornada_registrar') ? 'inline-flex' : 'none';
-    const navPermissoes = document.getElementById('navPermissoes');
-    if (navPermissoes) navPermissoes.style.display = this.can('permissoes_editar') ? 'inline-flex' : 'none';
-    const navUsuarios = document.getElementById('navUsuarios');
-    if (navUsuarios) navUsuarios.style.display = this.can('usuarios_visualizar') ? 'inline-flex' : 'none';
+    
+    const btnNovaOS = document.getElementById('btnNovaOS');
+    if (btnNovaOS) btnNovaOS.style.display = this.can('criar_os') ? 'inline-flex' : 'none';
+    
+    const btnSync = document.getElementById('btnSync');
+    if (btnSync) btnSync.style.display = this.can('sincronizar') ? 'inline-flex' : 'none';
+    
+    const btnDownload = document.getElementById('btnDownload');
+    if (btnDownload) btnDownload.style.display = this.can('baixar_dados') ? 'inline-flex' : 'none';
   }
 };
