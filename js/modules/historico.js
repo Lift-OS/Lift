@@ -1,4 +1,4 @@
-// modules/historico.js - Módulo de Histórico (com exclusão permanente)
+// modules/historico.js - Módulo de Histórico (corrigido)
 window.HistoricoModule = {
   init() {
     this.render();
@@ -33,7 +33,9 @@ window.HistoricoModule = {
       if (stats[os.status] !== undefined) stats[os.status]++;
       if (os.dataOS) {
         const data = new Date(os.dataOS + 'T12:00:00');
-        if (data.getMonth() === mesAtual && data.getFullYear() === anoAtual) esteMes++;
+        if (!isNaN(data.getTime()) && data.getMonth() === mesAtual && data.getFullYear() === anoAtual) {
+          esteMes++;
+        }
       }
     });
 
@@ -84,27 +86,38 @@ window.HistoricoModule = {
     const podeEditar = window.Auth.can('editar_os');
 
     filtered.forEach(os => {
-      let acoes = `<button onclick="HistoricoModule.verDetalhe('${window.esc(os.numeroOS)}')" class="text-blue-400"><i class="fas fa-eye"></i></button>`;
-      if (podeEditar) acoes += ` <button onclick="HistoricoModule.editar('${window.esc(os.numeroOS)}')" class="text-orange-400 ml-2"><i class="fas fa-edit"></i></button>`;
-      if (podeExcluir) acoes += ` <button onclick="HistoricoModule.excluir('${window.esc(os.numeroOS)}')" class="text-red-400 ml-2"><i class="fas fa-trash"></i></button>`;
+      // Garante que os campos existam
+      const numeroOS = os.numeroOS || os.numeroos || 'N/A';
+      const dataOS = os.dataOS || os.dataos || '';
+      const cliente = os.cliente || '';
+      const status = os.status || 'abertura';
+      const horasTotais = os.horasTotais || os.horastotais || '0h';
+      const orcamentoVinculado = os.orcamentoVinculado || os.orcamentovinculado || '';
 
-      const orcTag = os.orcamentoVinculado ? `<i class="fas fa-file-invoice-dollar text-xs text-[var(--warning)] ml-1" title="Orç: ${window.esc(os.orcamentoVinculado)}"></i>` : '';
+      let acoes = `<button onclick="HistoricoModule.verDetalhe('${window.esc(numeroOS)}')" class="text-blue-400"><i class="fas fa-eye"></i></button>`;
+      if (podeEditar) acoes += ` <button onclick="HistoricoModule.editar('${window.esc(numeroOS)}')" class="text-orange-400 ml-2"><i class="fas fa-edit"></i></button>`;
+      if (podeExcluir) acoes += ` <button onclick="HistoricoModule.excluir('${window.esc(numeroOS)}')" class="text-red-400 ml-2"><i class="fas fa-trash"></i></button>`;
+
+      const orcTag = orcamentoVinculado ? `<i class="fas fa-file-invoice-dollar text-xs text-[var(--warning)] ml-1" title="Orç: ${window.esc(orcamentoVinculado)}"></i>` : '';
 
       const row = tbody.insertRow();
       row.innerHTML = `
-        <td class="font-mono font-bold">${window.esc(os.numeroOS)}${orcTag}</td>
-        <td class="p-2">${window.esc(os.dataOS)}</td>
-        <td class="font-medium">${window.esc(os.cliente).toUpperCase()}</td>
-        <td class="p-2"><span class="status-badge status-${os.status || 'abertura'}">${window.Utils.formatStatus(os.status)}</span></td>
-        <td class="font-mono font-bold text-[var(--success)]">${window.esc(os.horasTotais)}</td>
+        <td class="font-mono font-bold">${window.esc(numeroOS)}${orcTag}</td>
+        <td class="p-2">${window.esc(dataOS)}</td>
+        <td class="font-medium">${window.esc(cliente).toUpperCase()}</td>
+        <td class="p-2"><span class="status-badge status-${status}">${window.Utils.formatStatus(status)}</span></td>
+        <td class="font-mono font-bold text-[var(--success)]">${window.esc(horasTotais)}</td>
         <td class="p-2">${acoes}</td>
       `;
     });
   },
 
   verDetalhe(numero) {
-    const os = window.State.osHistory.find(o => o.numeroOS === numero);
-    if (!os) return;
+    const os = window.State.osHistory.find(o => o.numeroOS === numero || o.numeroos === numero);
+    if (!os) {
+      showToast('OS não encontrada', true);
+      return;
+    }
     if (window.OSModule) {
       window.OSModule.carregarOS(os);
       window.PageLoader.load('os');
@@ -115,7 +128,6 @@ window.HistoricoModule = {
     this.verDetalhe(numero);
   },
 
-  // EXCLUIR: Remove da planilha e do localStorage
   async excluir(numero) {
     if (!window.Auth.can('historico_excluir')) {
       showToast('Apenas administrador pode excluir', true);
@@ -127,27 +139,27 @@ window.HistoricoModule = {
     }
 
     try {
-      // 1. Remove do localStorage
-      window.State.osHistory = window.State.osHistory.filter(o => o.numeroOS !== numero);
-      window.Storage.saveOSHistory();
-
-      // 2. Remove da planilha via Google Sheets
+      // Remove da planilha via Google Sheets
       if (window.GoogleSheets && window.Auth.can('sincronizar')) {
-        const result = await window.GoogleSheets.postData('deleteOS', { numeroOS: numero });
-        if (result) {
-          showToast(`OS ${numero} excluída da planilha!`);
-        } else {
-          showToast(`OS ${numero} excluída localmente, mas falhou ao sincronizar`, true);
+        const result = await window.GoogleSheets.syncDeleteOS({ numeroOS: numero });
+        if (!result) {
+          showToast(`Falha ao excluir da planilha`, true);
+          return;
         }
-      } else {
-        showToast(`OS ${numero} excluída localmente`);
       }
 
-      // 3. Atualiza a interface
+      // Remove do localStorage
+      window.State.osHistory = window.State.osHistory.filter(o => 
+        o.numeroOS !== numero && o.numeroos !== numero
+      );
+      window.Storage.saveOSHistory();
+
+      // Atualiza interface
       this.render();
       this.updateStats();
       if (window.ClientesModule) window.ClientesModule.updateStats();
-
+      
+      showToast(`✅ OS ${numero} excluída permanentemente!`);
     } catch (error) {
       console.error('Erro ao excluir:', error);
       showToast('Erro ao excluir OS', true);
@@ -161,7 +173,14 @@ window.HistoricoModule = {
     }
     let csv = "OS,Data,Cliente,Status,Tipo,Horas,Total\n";
     window.State.osHistory.forEach(os => {
-      csv += `${os.numeroOS || ''},${os.dataOS || ''},"${os.cliente || ''}",${window.Utils.formatStatus(os.status)},${os.tipoChamado || ''},${os.horasTotais || ''},${os.totalGeral || ''}\n`;
+      const numeroOS = os.numeroOS || os.numeroos || '';
+      const dataOS = os.dataOS || os.dataos || '';
+      const cliente = os.cliente || '';
+      const status = os.status || 'abertura';
+      const tipoChamado = os.tipoChamado || os.tipochamado || 'normal';
+      const horasTotais = os.horasTotais || os.horastotais || '0h';
+      const totalGeral = os.totalGeral || os.totalgeral || '00:00';
+      csv += `${numeroOS},${dataOS},"${cliente}",${window.Utils.formatStatus(status)},${tipoChamado},${horasTotais},${totalGeral}\n`;
     });
     const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -242,23 +261,22 @@ window.HistoricoModule = {
     if (!confirm('⚠️ ATENÇÃO: Isso irá apagar TODO o histórico de OS.\n\nEsta ação não pode ser desfeita. Confirmar?')) return;
 
     try {
-      // Limpa local
       const total = window.State.osHistory.length;
       window.State.osHistory = [];
       window.Storage.saveOSHistory();
 
-      // Sincroniza exclusão com planilha (opcional: enviar todos os IDs para deletar)
-      if (window.GoogleSheets && window.Auth.can('sincronizar')) {
-        // Você pode implementar uma ação 'clearAllOS' no backend se necessário
-        showToast(`${total} OS removidas localmente. Sincronização manual necessária.`);
-      }
-
       this.render();
       this.updateStats();
       if (window.ClientesModule) window.ClientesModule.updateStats();
-      showToast(`${total} OS removidas`);
+      showToast(`${total} OS removidas localmente`);
     } catch (error) {
       showToast('Erro ao limpar', true);
     }
+  },
+
+  // Força atualização dos dados
+  refresh() {
+    this.render();
+    this.updateStats();
   }
 };
