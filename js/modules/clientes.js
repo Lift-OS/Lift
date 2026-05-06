@@ -57,6 +57,32 @@ window.ClientesModule = {
     });
   },
 
+  // Adicione este método no clientes.js
+selecionarCliente(id) {
+  var cliente = window.State.clients.find(c => c.id === id);
+  if (!cliente) return;
+  
+  // Mostrar modal de escolha entre OS e Orçamento
+  var escolha = confirm('Cliente: ' + cliente.nome + '\n\nO que deseja fazer?\n\nOK = Abrir OS\nCancelar = Abrir Orçamento');
+  
+  if (escolha) {
+    // Carregar OS
+    window.Utils.setVal('cliente', cliente.nome);
+    window.Utils.setVal('cnpj', cliente.cnpj || '');
+    window.Utils.setVal('cidadeCliente', cliente.cidade || '');
+    window.Utils.setVal('endereco', cliente.endereco || '');
+    window.Utils.setVal('whatsappCliente', cliente.whatsapp || '');
+    window.PageLoader.load('os');
+    showToast('Cliente carregado na OS');
+  } else {
+    // Carregar Orçamento
+    window.Utils.setVal('orc_cliente', cliente.nome);
+    window.Utils.setVal('orc_equipamento', '');
+    window.PageLoader.load('orcamento');
+    showToast('Cliente carregado no orçamento');
+  }
+}
+
   filtrarClientes: function(busca) {
     if (!busca) { this.renderTable(); return; }
     var filtered = window.State.clients.filter(function(c) {
