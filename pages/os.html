@@ -1,0 +1,238 @@
+<!-- pages/os.html - Template da página OS -->
+<div id="tab-os">
+  <!-- Status e informações da OS -->
+  <div class="checklist-card p-4 md:p-5 mb-5">
+    <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+      <h2 class="font-display text-xl">Informações da O.S</h2>
+      <div>
+        <span class="status-badge" id="statusBadge">EM ABERTURA</span>
+        <span class="status-badge ml-2" id="orcVinculadoBadge" style="display:none; background:rgba(245,158,11,.2); color:#fbbf24">
+          <i class="fas fa-file-invoice-dollar"></i> <span id="orcVinculadoNum"></span>
+        </span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">N° O.S</label>
+        <input type="text" id="numeroOS" class="form-input font-mono font-bold text-lg" readonly>
+      </div>
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">Data</label>
+        <input type="date" id="dataOS" class="form-input">
+      </div>
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">Tipo de Chamado</label>
+        <select id="tipoChamado" class="form-input">
+          <option value="normal">Normal</option>
+          <option value="emergencial">Emergencial</option>
+          <option value="garantia">Garantia</option>
+          <option value="preventiva">Preventiva</option>
+          <option value="corretiva">Corretiva</option>
+          <option value="avaliacao">Avaliação</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <label class="block text-xs text-[var(--muted)] mb-1">Relato do Cliente</label>
+      <textarea id="relatoCliente" class="form-input" rows="2" placeholder="Descreva o problema..."></textarea>
+    </div>
+
+    <div class="action-buttons flex flex-wrap gap-3 justify-center">
+      <button id="btnAbrirOS" class="btn btn-primary"><i class="fas fa-plus-circle"></i> Abrir O.S</button>
+      <button id="btnIniciarExecucao" class="btn btn-info"><i class="fas fa-play"></i> Iniciar Execução</button>
+      <button id="btnFinalizar" class="btn btn-warning"><i class="fas fa-stop"></i> Finalizar Serviço</button>
+      <button id="btnFecharOS" class="btn btn-danger"><i class="fas fa-lock"></i> Fechar O.S</button>
+      <button id="btnAprovar" class="btn btn-success"><i class="fas fa-stamp"></i> Aprovar com Assinatura</button>
+    </div>
+  </div>
+
+  <!-- Dados do Equipamento -->
+  <div class="checklist-card p-4 md:p-5 mb-5">
+    <h2 class="font-display text-xl mb-3">Dados do Equipamento</h2>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">Marca</label>
+        <select id="marcaSelect" class="form-input"></select>
+        <div id="marcaOutraDiv" style="display:none" class="mt-1">
+          <input type="text" id="marcaOutra" class="form-input" placeholder="Digite a marca">
+        </div>
+        <input type="hidden" id="marca">
+      </div>
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">Modelo</label>
+        <input type="text" id="modelo" class="form-input">
+      </div>
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">N° Série</label>
+        <input type="text" id="numSerie" class="form-input">
+      </div>
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">Horímetro <span class="text-red-400">*</span></label>
+        <input type="text" id="horimetro" class="form-input" placeholder="Ex: 1250h">
+      </div>
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">Combustível</label>
+        <select id="combustivel" class="form-input">
+          <option value="">Selecione</option>
+          <option value="eletrico">Elétrico</option>
+          <option value="diesel">Diesel</option>
+          <option value="gasolina">Gasolina</option>
+          <option value="glp">GLP</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">WhatsApp Cliente</label>
+        <input type="text" id="whatsappCliente" class="form-input" placeholder="(00) 00000-0000">
+      </div>
+    </div>
+    <div class="grid md:grid-cols-3 gap-4 mt-4">
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">Cliente</label>
+        <input type="text" id="cliente" class="form-input">
+      </div>
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">CNPJ/CPF</label>
+        <input type="text" id="cnpj" class="form-input">
+      </div>
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">Cidade</label>
+        <input type="text" id="cidadeCliente" class="form-input">
+      </div>
+    </div>
+    <div class="mt-4">
+      <label class="block text-xs text-[var(--muted)] mb-1">Endereço</label>
+      <div class="flex gap-2">
+        <input type="text" id="endereco" class="form-input flex-1">
+        <button type="button" onclick="OSModule.abrirMapa()" class="btn btn-secondary"><i class="fas fa-map-marker-alt"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Serviço Realizado -->
+  <div class="checklist-card p-4 md:p-5 mb-5">
+    <h2 class="font-display text-xl mb-3">Serviço Realizado</h2>
+    <div class="mb-3">
+      <label class="block text-xs text-[var(--muted)] mb-1">Diagnóstico / Serviços executados</label>
+      <textarea id="descricaoServico" class="form-input min-h-24" placeholder="Descreva o diagnóstico..."></textarea>
+    </div>
+    <div class="mb-3">
+      <label class="block text-xs text-[var(--muted)] mb-1">Peças / Materiais Aplicados</label>
+      <textarea id="pecasAplicadas" class="form-input min-h-20" placeholder="Liste as peças..."></textarea>
+    </div>
+    <div>
+      <label class="block text-xs text-[var(--muted)] mb-1">Pendências / Itens Críticos</label>
+      <textarea id="pendencias" class="form-input min-h-20" placeholder="Pendências..."></textarea>
+    </div>
+  </div>
+
+  <!-- Fotos -->
+  <div class="checklist-card p-4 md:p-5 mb-5">
+    <h2 class="font-display text-xl mb-2"><i class="fas fa-camera"></i> Foto do Horímetro</h2>
+    <div class="photo-input-group flex gap-2">
+      <input type="file" id="fotoHorimetroInput" accept="image/*" class="form-input flex-1">
+    </div>
+    <div id="fotoHorimetroPreview" class="photo-preview"></div>
+  </div>
+
+  <div class="checklist-card p-4 md:p-5 mb-5">
+    <h2 class="font-display text-xl mb-2">Fotos do Serviço (max. 10)</h2>
+    <div class="photo-input-group flex gap-2">
+      <input type="file" id="fotosServico" multiple accept="image/*" class="form-input flex-1">
+    </div>
+    <div id="fotosPreview" class="photo-preview"></div>
+  </div>
+
+  <div class="checklist-card p-4 md:p-5 mb-5">
+    <h2 class="font-display text-xl mb-2"><i class="fas fa-exclamation-triangle"></i> Fotos das Pendências (max. 10)</h2>
+    <div class="photo-input-group flex gap-2">
+      <input type="file" id="fotosPendenciasInput" multiple accept="image/*" class="form-input flex-1">
+    </div>
+    <div id="fotosPendenciasPreview" class="photo-preview"></div>
+  </div>
+
+ <!-- Assinaturas Digitais -->
+<div class="checklist-card p-4 md:p-5 mb-5">
+  <h2 class="font-display text-xl mb-3">Assinaturas Digitais</h2>
+  <div class="grid md:grid-cols-2 gap-6">
+    <!-- Técnico -->
+    <div>
+      <label class="block text-xs text-[var(--muted)] mb-1">Técnico</label>
+      <canvas id="sigTecnicoCanvas" class="signature-canvas"></canvas>
+      <div class="flex gap-2 mt-2">
+        <button type="button" onclick="Signature.clear('tec', false)" class="btn btn-secondary text-xs">Limpar</button>
+        <button type="button" onclick="Signature.save('tec')" class="btn btn-primary text-xs">Salvar</button>
+      </div>
+      <input type="hidden" id="assinaturaTecnicoData">
+      <input type="text" id="tecnico" placeholder="LiftOS" class="form-input mt-2">
+    </div>
+    <!-- Cliente -->
+    <div>
+      <label class="block text-xs text-[var(--muted)] mb-1">Cliente / Recebedor</label>
+      <canvas id="sigClienteCanvas" class="signature-canvas"></canvas>
+      <div class="flex gap-2 mt-2">
+        <button type="button" onclick="Signature.clear('cli', false)" class="btn btn-secondary text-xs">Limpar</button>
+        <button type="button" onclick="Signature.save('cli')" class="btn btn-primary text-xs">Salvar</button>
+      </div>
+      <input type="hidden" id="assinaturaClienteData">
+      <input type="text" id="recebedor" placeholder="Nome do recebedor" class="form-input mt-2">
+    </div>
+  </div>
+</div>
+
+  <!-- Controle de Horas -->
+  <div class="checklist-card p-4 md:p-5 mb-5">
+    <h2 class="font-display text-xl mb-3">Controle de Horas</h2>
+    <div class="text-center mb-4">
+      <div class="timer-display" id="timerDisplay">00:00:00</div>
+      <div class="flex gap-2 justify-center mt-3 flex-wrap">
+        <button type="button" onclick="Timer.start()" class="btn btn-success text-sm">Iniciar</button>
+        <button type="button" onclick="Timer.pause()" class="btn btn-warning text-sm">Pausar</button>
+        <button type="button" onclick="Timer.stop()" class="btn btn-danger text-sm">Parar</button>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">Início</label>
+        <input type="time" id="horaInicio" class="form-input">
+      </div>
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">Saída Almoço</label>
+        <input type="time" id="horaAlmocoSaida" class="form-input">
+      </div>
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">Retorno Almoço</label>
+        <input type="time" id="horaAlmocoRetorno" class="form-input">
+      </div>
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">Término</label>
+        <input type="time" id="horaTermino" class="form-input">
+      </div>
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">Horas Cobradas</label>
+        <input type="text" id="horasTotais" class="form-input font-mono font-bold" readonly>
+      </div>
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">Horas Extras</label>
+        <input type="text" id="horasExtras" class="form-input" placeholder="00:00">
+      </div>
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">Adicional Noturno</label>
+        <input type="text" id="adicionalNoturno" class="form-input" placeholder="00:00">
+      </div>
+      <div>
+        <label class="block text-xs text-[var(--muted)] mb-1">Total Geral</label>
+        <input type="text" id="totalGeral" class="form-input font-mono font-bold text-[var(--success)]" readonly>
+      </div>
+    </div>
+  </div>
+
+  <!-- Botão Salvar -->
+  <div class="flex gap-3 justify-center mb-8">
+    <button id="btnSalvarProgresso" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Progresso</button>
+    <button id="btnPreviaPDF" class="btn btn-primary" onclick="window.open().document.write(OSModule.gerarRelatorioHTML()); setTimeout(() => window.print(), 500)"><i class="fas fa-file-pdf"></i> PDF</button>
+    <button id="btnEnviarEmail" class="btn btn-secondary"><i class="fas fa-envelope"></i> E-mail</button>
+    <button id="btnWhatsApp" class="btn btn-whatsapp" onclick="OSModule.enviarWhatsApp()"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+  </div>
+</div>
