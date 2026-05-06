@@ -723,3 +723,103 @@ body {
   content: "✓ ";
   color: var(--accent);
 }
+
+/* ========== MOBILE RESPONSIVO - TOPO ========== */
+@media (max-width: 768px) {
+  /* Header mais compacto */
+  header .max-w-7xl {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  
+  /* Ajuste da barra de ferramentas */
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+  
+  .toolbar .btn {
+    font-size: 10px;
+    padding: 6px 10px;
+  }
+  
+  /* Menu de navegação horizontal com scroll */
+  .main-nav {
+    overflow-x: auto;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 2px;
+    padding: 6px 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .main-nav .nav-btn {
+    display: inline-flex;
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+  
+  /* Área do usuário */
+  .user-area {
+    padding: 4px 10px;
+    gap: 6px;
+  }
+  
+  .user-area span {
+    font-size: 11px;
+  }
+  
+  /* Widgets (sino, online, temas) */
+  .notif-bell, .online-badge, .theme-toggle {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+  
+  .online-label-text {
+    display: none;
+  }
+  
+  /* Top bar */
+  .top-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  
+  .top-bar .flex.items-center.gap-3 {
+    justify-content: space-between;
+  }
+  
+  /* Título */
+  .top-bar h1 {
+    font-size: 1.1rem;
+  }
+  
+  .top-bar p {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 480px) {
+  .toolbar .btn {
+    font-size: 9px;
+    padding: 4px 8px;
+  }
+  
+  .main-nav .nav-btn {
+    font-size: 10px;
+    padding: 5px 10px;
+  }
+  
+  .user-area {
+    padding: 3px 8px;
+  }
+  
+  .user-area span:first-of-type {
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
