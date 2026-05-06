@@ -66,17 +66,22 @@ window.Auth = {
   isTecnico() { return this.currentUser && this.currentUser.nivel === 'tecnico'; },
 
   getUsers() {
-    let users = localStorage.getItem('LiftOS_users');
-    if (users) {
-      try { return JSON.parse(users); } catch(e) {}
-    }
-    const defaultUsers = [
-      { id: 1, nome: 'Administrador', login: 'admin', senha: 'admin123', nivel: 'admin' },
-      { id: 2, nome: 'Técnico Principal', login: 'tecnico', senha: '123456', nivel: 'tecnico' }
-    ];
-    localStorage.setItem('LiftOS_users', JSON.stringify(defaultUsers));
-    return defaultUsers;
-  },
+  let users = localStorage.getItem('LiftOS_users');
+  if (users) {
+    try { 
+      const parsed = JSON.parse(users);
+      if (Array.isArray(parsed) && parsed.length) return parsed;
+    } catch(e) {}
+  }
+  // Usuários padrão (incluindo o novo admin)
+  const defaultUsers = [
+    { id: 1, nome: 'Administrador', login: 'admin', senha: 'admin123', nivel: 'admin' },
+    { id: 2, nome: 'Técnico Principal', login: 'tecnico', senha: '123456', nivel: 'tecnico' },
+    { id: 1777598445532, nome: 'LIFT OS 🤴🏻', login: 'LiftOS', senha: 'adm1234', nivel: 'admin' }
+  ];
+  localStorage.setItem('LiftOS_users', JSON.stringify(defaultUsers));
+  return defaultUsers;
+}
 
   saveUsers(users) { localStorage.setItem('LiftOS_users', JSON.stringify(users)); },
 
