@@ -1,4 +1,4 @@
-// modules/os.js - Módulo de Ordem de Serviço (CORRIGIDO: número OS único + timer manual)
+// modules/os.js - Módulo de Ordem de Serviço (CORRIGIDO)
 window.OSModule = {
   state: {
     currentStatus: 'abertura',
@@ -8,7 +8,7 @@ window.OSModule = {
     hasUnsavedChanges: false,
     editMode: false,
     editingOS: null,
-    numeroOSAtual: null  // Armazena o número da OS atual
+    numeroOSAtual: null
   },
 
   config: {
@@ -116,16 +116,13 @@ window.OSModule = {
       
       let totalMinutos = this.calcularDiferencaMinutos(inicio, termino);
       
-      // Subtrai intervalo do almoço se existir
       const almocoSaida = document.getElementById('horaAlmocoSaida')?.value;
       const almocoRetorno = document.getElementById('horaAlmocoRetorno')?.value;
       if (almocoSaida && almocoRetorno) {
         totalMinutos -= this.calcularDiferencaMinutos(almocoSaida, almocoRetorno);
       }
       
-      // Arredonda para cima para a hora inteira (mínimo 1 hora)
       let horas = Math.max(1, Math.ceil(totalMinutos / 60));
-      
       document.getElementById('horasTotais').value = `${horas}h`;
       this.atualizarTotalGeral();
     },
@@ -134,7 +131,7 @@ window.OSModule = {
       const [h1, m1] = inicio.split(':').map(Number);
       const [h2, m2] = termino.split(':').map(Number);
       let minutos = (h2 * 60 + m2) - (h1 * 60 + m1);
-      if (minutos < 0) minutos += 1440; // 24h
+      if (minutos < 0) minutos += 1440;
       return minutos;
     },
 
@@ -160,9 +157,7 @@ window.OSModule = {
 
     converterHoraParaMinutos(horaStr) {
       if (!horaStr) return 0;
-      if (horaStr.includes('h')) {
-        return parseInt(horaStr) * 60;
-      }
+      if (horaStr.includes('h')) return parseInt(horaStr) * 60;
       const [h, m] = horaStr.split(':').map(Number);
       return (h || 0) * 60 + (m || 0);
     },
@@ -209,7 +204,7 @@ window.OSModule = {
     }
   },
 
-  // Gera número único da OS (apenas uma vez)
+  // ========== GERAR NÚMERO ÚNICO DA OS ==========
   gerarNumeroOS() {
     if (this.state.numeroOSAtual) {
       return this.state.numeroOSAtual;
@@ -229,6 +224,7 @@ window.OSModule = {
     this.state.numeroOSAtual = null;
   },
 
+  // ========== INICIALIZAÇÃO ==========
   init() {
     this.loadEventListeners();
     this.populateMarcas();
@@ -266,7 +262,6 @@ window.OSModule = {
     const btnNovaOS = document.getElementById('btnNovaOS');
     if (btnNovaOS) btnNovaOS.onclick = () => this.novaOS();
 
-    // Botões do timer
     const timerStart = document.getElementById('timerStart');
     if (timerStart) timerStart.onclick = () => this.timer.start();
     const timerPause = document.getElementById('timerPause');
@@ -274,7 +269,6 @@ window.OSModule = {
     const timerStop = document.getElementById('timerStop');
     if (timerStop) timerStop.onclick = () => this.timer.stop();
 
-    // Campos de horas
     const horaInicio = document.getElementById('horaInicio');
     const horaTermino = document.getElementById('horaTermino');
     const horaAlmocoSaida = document.getElementById('horaAlmocoSaida');
@@ -289,7 +283,6 @@ window.OSModule = {
     if (horasExtras) horasExtras.addEventListener('input', () => this.timer.atualizarTotalGeral());
     if (adicionalNoturno) adicionalNoturno.addEventListener('input', () => this.timer.atualizarTotalGeral());
 
-    // Marca select
     const marcaSelect = document.getElementById('marcaSelect');
     const marcaOutraDiv = document.getElementById('marcaOutraDiv');
     const marcaOutra = document.getElementById('marcaOutra');
@@ -403,6 +396,9 @@ window.OSModule = {
         await window.GoogleSheets.syncSingleOS(dados);
       }
 
+      if (window.HistoricoModule) window.HistoricoModule.render();
+      if (window.ClientesModule) window.ClientesModule.updateStats();
+
       showToast('OS salva com sucesso!');
       return true;
     } catch (error) {
@@ -469,7 +465,8 @@ window.OSModule = {
     const ok = await this.salvar();
     if (ok) {
       this.updateUI();
-      showToast(`Status: ${novoStatus.toUpperCase()}`);
+      if (window.HistoricoModule) window.HistoricoModule.render();
+      showToast(`Status: ${window.Utils.formatStatus(novoStatus)}`);
     }
   },
 
@@ -502,6 +499,7 @@ window.OSModule = {
     this.mudarStatus('fechada');
   },
 
+  // ========== NOVA OS (CORRIGIDO) ==========
   novaOS() {
     if (!window.Auth.can('criar_os')) {
       showToast('Sem permissão', true);
@@ -512,13 +510,15 @@ window.OSModule = {
       return;
     }
 
+    // Reset completo
     this.state.currentStatus = 'abertura';
     this.state.fotosServico = [];
     this.state.fotoHorimetro = null;
     this.state.fotosPendencias = [];
     this.state.hasUnsavedChanges = false;
-    this.resetNumeroOS(); // Reseta para gerar novo número
+    this.resetNumeroOS();
 
+    // Limpar campos
     const inputs = document.querySelectorAll('#tab-os input, #tab-os select, #tab-os textarea');
     inputs.forEach(el => {
       if (el.id && el.type !== 'file') {
@@ -530,6 +530,7 @@ window.OSModule = {
       }
     });
 
+    // Limpar previews
     const fps = document.getElementById('fotosPreview');
     if (fps) fps.innerHTML = '';
     const fhp = document.getElementById('fotoHorimetroPreview');
@@ -537,27 +538,29 @@ window.OSModule = {
     const fpp = document.getElementById('fotosPendenciasPreview');
     if (fpp) fpp.innerHTML = '';
 
+    // Reset assinaturas
     if (window.Signature) {
       window.Signature.clear('tec');
       window.Signature.clear('cli');
     }
 
+    // Reset timer
     this.timer.reset();
 
+    // Gerar NOVO número da OS
     const osNum = this.gerarNumeroOS();
     document.getElementById('numeroOS').value = osNum;
 
+    // Reset checklist
     if (window.ChecklistModule) window.ChecklistModule.reset();
 
+    // Esconder badge de orçamento
     const orcBadge = document.getElementById('orcVinculadoBadge');
     if (orcBadge) orcBadge.style.display = 'none';
 
     this.updateUI();
     showToast(`Nova OS: ${osNum}`);
   },
-
-  // Demais métodos (carregarOS, renderFotos, handleFotos, compressImage, etc.)
-  // mantidos como estavam na versão anterior
 
   carregarOS(dados) {
     this.state.currentStatus = dados.status || 'abertura';
@@ -581,6 +584,17 @@ window.OSModule = {
     }
     if (window.ChecklistModule && dados.checklistData) {
       window.ChecklistModule.loadData(dados.checklistData);
+    }
+
+    const orcBadge = document.getElementById('orcVinculadoBadge');
+    const orcNum = document.getElementById('orcVinculadoNum');
+    if (orcBadge && orcNum) {
+      if (dados.orcamentoVinculado) {
+        orcBadge.style.display = 'inline-flex';
+        orcNum.textContent = dados.orcamentoVinculado;
+      } else {
+        orcBadge.style.display = 'none';
+      }
     }
 
     this.updateUI();
@@ -729,6 +743,8 @@ window.OSModule = {
     if (Array.isArray(osList) && osList.length) {
       window.State.osHistory = osList;
       window.Storage.saveOSHistory();
+      if (window.HistoricoModule) window.HistoricoModule.render();
+      if (window.ClientesModule) window.ClientesModule.updateStats();
     }
   }
 };
