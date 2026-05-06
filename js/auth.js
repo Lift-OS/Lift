@@ -1,94 +1,18 @@
-// auth.js - Sistema de autenticação completo com permissões
+// auth.js - Sistema de autenticação (ADMIN vê todas as abas)
 window.Auth = {
   currentUser: null,
   inactivityTimer: null,
 
-  permissoes: {
-    admin: {
-      // Navegação
-      ver_usuarios: true,
-      ver_agendamentos: true,
-      ver_permissoes: true,
-      ver_jornada: true,
-      ver_estoque: true,
-      ver_orcamento: true,
-      ver_historico: true,
-      ver_checklist: true,
-      ver_clientes: true,
-      // Ações
-      criar_os: true,
-      sincronizar: true,
-      baixar_dados: true,
-      heartbeat: true,
-      clientes_cadastrar: true,
-      clientes_editar: true,
-      clientes_excluir: true,
-      agendamentos_criar: true,
-      agendamentos_editar: true,
-      agendamentos_excluir: true,
-      jornada_registrar: true,
-      usuarios_criar: true,
-      usuarios_editar: true,
-      usuarios_excluir: true,
-      permissoes_editar: true
-    },
-    tecnico: {
-      ver_usuarios: false,
-      ver_agendamentos: true,
-      ver_permissoes: false,
-      ver_jornada: true,
-      ver_estoque: false,
-      ver_orcamento: true,
-      ver_historico: true,
-      ver_checklist: true,
-      ver_clientes: true,
-      criar_os: false,
-      sincronizar: false,
-      baixar_dados: false,
-      heartbeat: true,
-      clientes_cadastrar: false,
-      clientes_editar: false,
-      clientes_excluir: false,
-      agendamentos_criar: false,
-      agendamentos_editar: false,
-      agendamentos_excluir: false,
-      jornada_registrar: true,
-      usuarios_criar: false,
-      usuarios_editar: false,
-      usuarios_excluir: false,
-      permissoes_editar: false
-    },
-    visualizador: {
-      ver_usuarios: false,
-      ver_agendamentos: true,
-      ver_permissoes: false,
-      ver_jornada: false,
-      ver_estoque: false,
-      ver_orcamento: true,
-      ver_historico: true,
-      ver_checklist: true,
-      ver_clientes: true,
-      criar_os: false,
-      sincronizar: false,
-      baixar_dados: false,
-      heartbeat: false,
-      clientes_cadastrar: false,
-      clientes_editar: false,
-      clientes_excluir: false,
-      agendamentos_criar: false,
-      agendamentos_editar: false,
-      agendamentos_excluir: false,
-      jornada_registrar: false,
-      usuarios_criar: false,
-      usuarios_editar: false,
-      usuarios_excluir: false,
-      permissoes_editar: false
-    }
-  },
-
   can: function(permission) {
     if (!this.currentUser) return false;
-    return this.permissoes[this.currentUser.nivel]?.[permission] === true;
+    // ADMIN tem todas as permissões
+    if (this.currentUser.nivel === 'admin') return true;
+    // Técnico tem permissões limitadas
+    if (this.currentUser.nivel === 'tecnico') {
+      var tecnicas = ['ver_jornada', 'ver_agendamentos', 'jornada_registrar', 'heartbeat'];
+      return tecnicas.includes(permission);
+    }
+    return false;
   },
 
   isAdmin: function() { return this.currentUser?.nivel === 'admin'; },
@@ -209,33 +133,49 @@ window.Auth = {
       badge.textContent = isAdmin ? 'ADMIN' : (isTecnico ? 'TÉCNICO' : 'VISUALIZADOR');
     }
     
-    // ========== MENU DE NAVEGAÇÃO ==========
+    // ========== ADMIN: MOSTRA TODAS AS ABAS ==========
     var navAgendamentos = document.getElementById('navAgendamentos');
-    if (navAgendamentos) navAgendamentos.style.display = this.can('ver_agendamentos') ? 'inline-flex' : 'none';
-    
     var navJornada = document.getElementById('navJornada');
-    if (navJornada) navJornada.style.display = this.can('ver_jornada') ? 'inline-flex' : 'none';
-    
     var navPermissoes = document.getElementById('navPermissoes');
-    if (navPermissoes) navPermissoes.style.display = this.can('ver_permissoes') ? 'inline-flex' : 'none';
-    
     var navUsuarios = document.getElementById('navUsuarios');
-    if (navUsuarios) navUsuarios.style.display = this.can('ver_usuarios') ? 'inline-flex' : 'none';
-    
     var navEstoque = document.getElementById('tabEstoqueBtn');
-    if (navEstoque) navEstoque.style.display = this.can('ver_estoque') ? 'inline-flex' : 'none';
-    
     var navOrcamento = document.getElementById('tabOrcamentoBtn');
-    if (navOrcamento) navOrcamento.style.display = this.can('ver_orcamento') ? 'inline-flex' : 'none';
     
-    // ========== BOTÕES DA TOOLBAR ==========
+    if (isAdmin) {
+      // ADMIN: todas as abas visíveis
+      if (navAgendamentos) navAgendamentos.style.display = 'inline-flex';
+      if (navJornada) navJornada.style.display = 'inline-flex';
+      if (navPermissoes) navPermissoes.style.display = 'inline-flex';
+      if (navUsuarios) navUsuarios.style.display = 'inline-flex';
+      if (navEstoque) navEstoque.style.display = 'inline-flex';
+      if (navOrcamento) navOrcamento.style.display = 'inline-flex';
+    } else if (isTecnico) {
+      // TÉCNICO: vê Agendamentos e Jornada
+      if (navAgendamentos) navAgendamentos.style.display = 'inline-flex';
+      if (navJornada) navJornada.style.display = 'inline-flex';
+      if (navPermissoes) navPermissoes.style.display = 'none';
+      if (navUsuarios) navUsuarios.style.display = 'none';
+    } else {
+      // VISUALIZADOR: só vê o básico
+      if (navAgendamentos) navAgendamentos.style.display = 'none';
+      if (navJornada) navJornada.style.display = 'none';
+      if (navPermissoes) navPermissoes.style.display = 'none';
+      if (navUsuarios) navUsuarios.style.display = 'none';
+    }
+    
+    // Botões da toolbar (Nova OS, Sincronizar, Baixar)
     var btnNovaOS = document.getElementById('btnNovaOS');
-    if (btnNovaOS) btnNovaOS.style.display = this.can('criar_os') ? 'inline-flex' : 'none';
-    
     var btnSync = document.getElementById('btnSync');
-    if (btnSync) btnSync.style.display = this.can('sincronizar') ? 'inline-flex' : 'none';
-    
     var btnDownload = document.getElementById('btnDownload');
-    if (btnDownload) btnDownload.style.display = this.can('baixar_dados') ? 'inline-flex' : 'none';
+    
+    if (isAdmin) {
+      if (btnNovaOS) btnNovaOS.style.display = 'inline-flex';
+      if (btnSync) btnSync.style.display = 'inline-flex';
+      if (btnDownload) btnDownload.style.display = 'inline-flex';
+    } else {
+      if (btnNovaOS) btnNovaOS.style.display = 'none';
+      if (btnSync) btnSync.style.display = 'none';
+      if (btnDownload) btnDownload.style.display = 'none';
+    }
   }
 };
