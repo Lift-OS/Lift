@@ -1,6 +1,6 @@
 // google-sheets.js - URL da sua nova planilha
 window.GoogleSheets = {
-  webAppUrl: 'https://script.google.com/macros/s/AKfycbx52Q1MHNIbNnz7ZrUu56vWBgJYfFWWfx0-ipMmngqDJvO8MwqOIi5jE3HVqi5E6sw/exec',
+  webAppUrl: 'https://script.google.com/macros/s/AKfycbwpTEsk0VfFO0KNbJaTh-LEAD6qGcAf9G_QXVpkroaO3BDgGZX8zdrRBGJDUNATqncpHQ/exec',
 
   async postData(action, data) {
     try {
