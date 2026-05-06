@@ -1,57 +1,43 @@
-// modules/online-users.js - Widget funcional sem heartbeat
+// modules/online-users.js - Widget de usuários online
 window.OnlineUsers = {
   _users: [
     { login: 'admin', nome: 'Administrador', nivel: 'admin', isOnline: true },
-    { login: 'tecnico', nome: 'Técnico Principal', nivel: 'tecnico', isOnline: false }
+    { login: 'tecnico', nome: 'Técnico Principal', nivel: 'tecnico', isOnline: true }
   ],
 
-  start() {
+  start: function() {
     this.render();
-    setInterval(() => this.render(), 30000);
+    setInterval(function() { OnlineUsers.render(); }, 60000);
   },
 
-  toggleDropdown() {
-    const dd = document.getElementById('onlineDropdown');
+  toggleDropdown: function() {
+    var dd = document.getElementById('onlineDropdown');
     if (dd) dd.classList.toggle('open');
   },
 
-  updateList(users) {
-    if (users && users.length) this._users = users;
+  fetch: function() {
     this.render();
   },
 
-  render() {
-    const onlineCount = this._users.filter(u => u.isOnline).length;
-    const countSpan = document.getElementById('onlineCount');
+  render: function() {
+    var onlineCount = this._users.filter(function(u) { return u.isOnline; }).length;
+    var countSpan = document.getElementById('onlineCount');
     if (countSpan) countSpan.innerText = onlineCount;
     
-    const listDiv = document.getElementById('onlineUserList');
+    var listDiv = document.getElementById('onlineUserList');
     if (!listDiv) return;
     
-    if (!this._users.length) {
-      listDiv.innerHTML = '<div class="online-dropdown-empty">Nenhum usuário</div>';
-      return;
+    var html = '';
+    for (var i = 0; i < this._users.length; i++) {
+      var u = this._users[i];
+      var avatarClass = u.nivel === 'admin' ? 'admin-avatar' : 'tecnico-avatar';
+      html += '<div class="online-user-row">';
+      html += '<div class="online-user-avatar ' + avatarClass + '">' + u.nome.charAt(0).toUpperCase() + '</div>';
+      html += '<div class="online-user-info">';
+      html += '<div class="online-user-name">' + window.esc(u.nome) + '</div>';
+      html += '<div class="online-user-meta"><span class="online-user-status-dot ' + (u.isOnline ? 'is-online' : 'is-offline') + '"></span> ' + (u.isOnline ? 'Online agora' : 'Offline') + '</div>';
+      html += '</div></div>';
     }
-    
-    let html = '';
-    this._users.forEach(u => {
-      html += `
-        <div class="online-user-row">
-          <div class="online-user-avatar ${u.nivel === 'admin' ? 'admin-avatar' : 'tecnico-avatar'}">
-            ${(u.nome || u.login).charAt(0).toUpperCase()}
-          </div>
-          <div class="online-user-info">
-            <div class="online-user-name">${window.esc(u.nome || u.login)}</div>
-            <div class="online-user-meta">
-              <span class="online-user-status-dot ${u.isOnline ? 'is-online' : 'is-offline'}"></span>
-              ${u.isOnline ? 'Online' : 'Offline'}
-            </div>
-          </div>
-        </div>
-      `;
-    });
     listDiv.innerHTML = html;
-  },
-
-  fetch() { this.render(); }
+  }
 };
