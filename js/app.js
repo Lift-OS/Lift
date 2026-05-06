@@ -35,7 +35,6 @@ window.PageLoader = {
   },
 
   initPage(pageName) {
-    // Remove modais residuais
     const modalCliente = document.getElementById('modalEscolhaCliente');
     if (modalCliente) modalCliente.remove();
     const modalEquip = document.getElementById('modalEquipamentosCliente');
@@ -78,7 +77,7 @@ window.PageLoader = {
   }
 };
 
-// Estado global (compatível com o original)
+// Estado global
 window.State = {
   clients: [],
   osHistory: [],
@@ -98,7 +97,7 @@ window.State = {
   lastSeenOSIds: []
 };
 
-// Storage (compatível com o original)
+// Storage
 window.Storage = {
   save(key, value) { try { localStorage.setItem('LiftOS_' + key, JSON.stringify(value)); } catch(e) {} },
   load(key) { try { const d = localStorage.getItem('LiftOS_' + key); return d ? JSON.parse(d) : null; } catch(e) { return null; } },
@@ -137,7 +136,17 @@ window.App = {
     Storage.loadAgendamentos();
     Storage.loadNotificacoes();
 
-    await PageLoader.load('os');
+    // ========== CARREGA PÁGINA INICIAL CONFORME PERFIL ==========
+    var userNivel = window.Auth.currentUser?.nivel;
+    
+    if (userNivel === 'tecnico') {
+      // Técnico começa na Jornada
+      await PageLoader.load('jornada');
+    } else {
+      // Admin ou visualizador começa na OS
+      await PageLoader.load('os');
+    }
+    // ============================================================
 
     // Inicializa módulos globais
     if (window.ChecklistModule) window.ChecklistModule.init();
@@ -146,8 +155,8 @@ window.App = {
     if (window.Fotos) window.Fotos.init();
     if (window.Horas) window.Horas.initListeners();
     if (window.Notificacoes) window.Notificacoes.init();
-    // Inicializa sistema de temas
     if (window.ThemeManager) { window.ThemeManager.init(); }
+    
     // Sincronização
     if (window.Auth.can('sincronizar') && navigator.onLine) {
       setTimeout(() => window.GoogleSheets.fetchFromSheet(), 1500);
