@@ -2,11 +2,10 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes, maximum-scale=1.0">
   
   <!-- ========== PWA MANIFEST ========== -->
   <link rel="manifest" href="manifest.json">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes, maximum-scale=1.0">
   <meta name="theme-color" content="#f97316">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -14,7 +13,7 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <!-- ================================= -->
   
-  <title>Lift OS - Profissional v6.0</title>
+  <title>Lift OS - Profissional</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -56,7 +55,8 @@
 
 <!-- APP PRINCIPAL -->
 <div id="appContainer" style="display:none">
-  <!-- Header -->
+  
+  <!-- HEADER -->
   <header class="no-print border-b border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur-sm sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 py-3">
       <div class="flex justify-between items-center flex-wrap gap-3">
@@ -72,6 +72,7 @@
           </div>
         </div>
         <div class="flex items-center gap-3">
+          
           <!-- NOTIFICAÇÕES -->
           <div class="notif-widget" id="notifWidget">
             <div class="notif-bell" onclick="Notificacoes.toggleDropdown()">
@@ -98,15 +99,13 @@
             <div class="online-dropdown" id="onlineDropdown">
               <div class="online-dropdown-header">
                 <span><i class="fas fa-signal"></i> Usuários</span>
-                <button class="refresh-btn" onclick="event.stopPropagation();OnlineUsers.fetch()">
-                  <i class="fas fa-sync-alt"></i>
-                </button>
+                <button class="refresh-btn" onclick="event.stopPropagation();OnlineUsers.fetch()"><i class="fas fa-sync-alt"></i></button>
               </div>
               <div id="onlineUserList"></div>
             </div>
           </div>
 
-          <!-- Widget de Temas -->
+          <!-- TEMAS -->
           <div class="online-widget" id="themeWidget">
             <div class="theme-toggle" id="themeToggle">
               <i class="fas fa-palette"></i>
@@ -114,18 +113,10 @@
               <i class="fas fa-chevron-down"></i>
             </div>
             <div class="theme-dropdown" id="themeDropdown">
-              <div class="theme-option" data-theme="dark">
-                <i class="fas fa-moon"></i> Escuro
-              </div>
-              <div class="theme-option" data-theme="light">
-                <i class="fas fa-sun"></i> Claro
-              </div>
-              <div class="theme-option" data-theme="blue">
-                <i class="fas fa-water"></i> Azul
-              </div>
-              <div class="theme-option" data-theme="green">
-                <i class="fas fa-leaf"></i> Verde
-              </div>
+              <div class="theme-option" data-theme="dark"><i class="fas fa-moon"></i> Escuro</div>
+              <div class="theme-option" data-theme="light"><i class="fas fa-sun"></i> Claro</div>
+              <div class="theme-option" data-theme="blue"><i class="fas fa-water"></i> Azul</div>
+              <div class="theme-option" data-theme="green"><i class="fas fa-leaf"></i> Verde</div>
             </div>
           </div>
           
@@ -142,7 +133,7 @@
     </div>
   </header>
 
-  <!-- NAVEGAÇÃO -->
+  <!-- NAVEGAÇÃO PRINCIPAL -->
   <nav class="main-nav no-print">
     <button onclick="PageLoader.load('os')" class="nav-btn active" data-page="os"><i class="fas fa-clipboard-list"></i> O.S</button>
     <button onclick="PageLoader.load('orcamento')" class="nav-btn" data-page="orcamento"><i class="fas fa-file-invoice-dollar"></i> Orçamento</button>
@@ -155,6 +146,49 @@
     <button id="navPermissoes" onclick="PageLoader.load('permissoes')" class="nav-btn" data-page="permissoes" style="display:none"><i class="fas fa-lock"></i> Permissões</button>
     <button id="navUsuarios" onclick="PageLoader.load('usuarios')" class="nav-btn" data-page="usuarios" style="display:none"><i class="fas fa-users-cog"></i> Usuários</button>
   </nav>
+
+  <!-- TOOLBAR COM BOTÕES -->
+  <div class="toolbar" style="position:relative; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; padding:8px 12px; background:var(--card); border-radius:12px; margin:16px auto; max-width:95%;">
+    
+    <button id="btnNovaOS" class="btn btn-primary text-sm" onclick="App.novaOS()" style="display:none">
+      <i class="fas fa-plus"></i> <span class="toolbar-text">Nova OS</span>
+    </button>
+    
+    <button id="btnNovoOrcamento" class="btn btn-primary text-sm" onclick="OrcamentoModule.novo()" style="display:none">
+      <i class="fas fa-file-invoice-dollar"></i> <span class="toolbar-text">Novo Orçamento</span>
+    </button>
+    
+    <button id="btnSync" class="btn btn-secondary text-sm" onclick="GoogleSheets.fetchFromSheet()" style="display:none">
+      <i class="fas fa-cloud-upload-alt"></i> <span class="toolbar-text">Sincronizar</span>
+    </button>
+    
+    <button id="btnDownload" class="btn btn-secondary text-sm" onclick="GoogleSheets.fetchFromSheet()" style="display:none">
+      <i class="fas fa-cloud-download-alt"></i> <span class="toolbar-text">Baixar</span>
+    </button>
+    
+    <!-- Menu Suspenso -->
+    <div style="position:relative;">
+      <button class="btn btn-secondary text-sm" onclick="document.getElementById('menuSuspenso').classList.toggle('open')">
+        <i class="fas fa-bars"></i> <span class="toolbar-text">Mais</span>
+      </button>
+      <div id="menuSuspenso" style="position:absolute; bottom:100%; left:0; background:var(--card); border:1px solid var(--border); border-radius:12px; min-width:180px; display:none; z-index:100; margin-bottom:8px;">
+        <button onclick="SyncQueue.forceSync()" class="btn w-full text-left" style="background:none; border:none; padding:10px 16px; color:var(--fg); cursor:pointer;">
+          <i class="fas fa-sync-alt"></i> Forçar Sincronização
+        </button>
+        <button onclick="SyncQueue.limparFila()" class="btn w-full text-left" style="background:none; border:none; padding:10px 16px; color:var(--danger); cursor:pointer;">
+          <i class="fas fa-broom"></i> Limpar Fila
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    #menuSuspenso.open { display: block; }
+    @media (max-width: 768px) {
+      .toolbar-text { display: none; }
+      .toolbar .btn { padding: 8px 10px; }
+    }
+  </style>
 
   <!-- PÁGINAS DINÂMICAS -->
   <main id="pageContainer" class="max-w-7xl mx-auto px-4 py-6">
@@ -216,7 +250,6 @@ if ('serviceWorker' in navigator) {
     .catch(err => console.error('❌ Erro SW:', err));
 }
 </script>
-<!-- ========================================= -->
 
 </body>
 </html>
