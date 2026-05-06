@@ -1,0 +1,264 @@
+// modules/historico.js - Módulo de Histórico (com exclusão permanente)
+window.HistoricoModule = {
+  init() {
+    this.render();
+    this.updateStats();
+    this.loadEventListeners();
+  },
+
+  loadEventListeners() {
+    const searchInput = document.getElementById('historicoSearch');
+    if (searchInput) searchInput.oninput = () => this.render();
+    const filtroTipo = document.getElementById('historicoFiltroTipo');
+    if (filtroTipo) filtroTipo.onchange = () => this.render();
+    const filtroStatus = document.getElementById('historicoFiltroStatus');
+    if (filtroStatus) filtroStatus.onchange = () => this.render();
+    const btnExportar = document.getElementById('btnExportarCSVHistorico');
+    if (btnExportar) btnExportar.onclick = () => this.exportCSV();
+    const btnImportar = document.getElementById('btnImportarCSVHistorico');
+    if (btnImportar) btnImportar.onclick = () => this.importCSV();
+    const btnLimpar = document.getElementById('btnLimparHistorico');
+    if (btnLimpar) btnLimpar.onclick = () => this.clear();
+  },
+
+  updateStats() {
+    const total = window.State.osHistory.length;
+    const stats = { abertura: 0, execucao: 0, finalizacao: 0, fechada: 0, aprovada: 0 };
+    let esteMes = 0;
+    const agora = new Date();
+    const mesAtual = agora.getMonth();
+    const anoAtual = agora.getFullYear();
+
+    window.State.osHistory.forEach(os => {
+      if (stats[os.status] !== undefined) stats[os.status]++;
+      if (os.dataOS) {
+        const data = new Date(os.dataOS + 'T12:00:00');
+        if (data.getMonth() === mesAtual && data.getFullYear() === anoAtual) esteMes++;
+      }
+    });
+
+    const elTotal = document.getElementById('statTotalOS');
+    const elAbertura = document.getElementById('statStatusAbertura');
+    const elExecucao = document.getElementById('statStatusExecucao');
+    const elFinalizacao = document.getElementById('statStatusFinalizacao');
+    const elFechada = document.getElementById('statStatusFechada');
+    const elAprovada = document.getElementById('statStatusAprovada');
+    const elEsteMes = document.getElementById('statEsteMes');
+
+    if (elTotal) elTotal.innerText = total;
+    if (elAbertura) elAbertura.innerText = stats.abertura;
+    if (elExecucao) elExecucao.innerText = stats.execucao;
+    if (elFinalizacao) elFinalizacao.innerText = stats.finalizacao;
+    if (elFechada) elFechada.innerText = stats.fechada;
+    if (elAprovada) elAprovada.innerText = stats.aprovada;
+    if (elEsteMes) elEsteMes.innerText = esteMes;
+  },
+
+  render() {
+    const busca = (document.getElementById('historicoSearch')?.value || '').toLowerCase();
+    const filtroTipo = document.getElementById('historicoFiltroTipo')?.value || '';
+    const filtroStatus = document.getElementById('historicoFiltroStatus')?.value || '';
+
+    let filtered = window.State.osHistory.filter(os => {
+      if (busca && !os.numeroOS?.toLowerCase().includes(busca) && !os.cliente?.toLowerCase().includes(busca)) return false;
+      if (filtroTipo && os.tipoChamado !== filtroTipo) return false;
+      if (filtroStatus && os.status !== filtroStatus) return false;
+      return true;
+    });
+
+    filtered.sort((a, b) => (b.dataOS || '').localeCompare(a.dataOS || ''));
+
+    const tbody = document.getElementById('historicoTableBody');
+    const empty = document.getElementById('historicoEmpty');
+
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (!filtered.length) {
+      if (empty) empty.classList.remove('hidden');
+      return;
+    }
+    if (empty) empty.classList.add('hidden');
+
+    const podeExcluir = window.Auth.can('historico_excluir');
+    const podeEditar = window.Auth.can('editar_os');
+
+    filtered.forEach(os => {
+      let acoes = `<button onclick="HistoricoModule.verDetalhe('${window.esc(os.numeroOS)}')" class="text-blue-400"><i class="fas fa-eye"></i></button>`;
+      if (podeEditar) acoes += ` <button onclick="HistoricoModule.editar('${window.esc(os.numeroOS)}')" class="text-orange-400 ml-2"><i class="fas fa-edit"></i></button>`;
+      if (podeExcluir) acoes += ` <button onclick="HistoricoModule.excluir('${window.esc(os.numeroOS)}')" class="text-red-400 ml-2"><i class="fas fa-trash"></i></button>`;
+
+      const orcTag = os.orcamentoVinculado ? `<i class="fas fa-file-invoice-dollar text-xs text-[var(--warning)] ml-1" title="Orç: ${window.esc(os.orcamentoVinculado)}"></i>` : '';
+
+      const row = tbody.insertRow();
+      row.innerHTML = `
+        <td class="font-mono font-bold">${window.esc(os.numeroOS)}${orcTag}</td>
+        <td class="p-2">${window.esc(os.dataOS)}</td>
+        <td class="font-medium">${window.esc(os.cliente).toUpperCase()}</td>
+        <td class="p-2"><span class="status-badge status-${os.status || 'abertura'}">${window.Utils.formatStatus(os.status)}</span></td>
+        <td class="font-mono font-bold text-[var(--success)]">${window.esc(os.horasTotais)}</td>
+        <td class="p-2">${acoes}</td>
+      `;
+    });
+  },
+
+  verDetalhe(numero) {
+    const os = window.State.osHistory.find(o => o.numeroOS === numero);
+    if (!os) return;
+    if (window.OSModule) {
+      window.OSModule.carregarOS(os);
+      window.PageLoader.load('os');
+    }
+  },
+
+  editar(numero) {
+    this.verDetalhe(numero);
+  },
+
+  // EXCLUIR: Remove da planilha e do localStorage
+  async excluir(numero) {
+    if (!window.Auth.can('historico_excluir')) {
+      showToast('Apenas administrador pode excluir', true);
+      return;
+    }
+
+    if (!confirm(`⚠️ ATENÇÃO: Excluir permanentemente a OS ${numero}?\n\nEssa ação não pode ser desfeita e removerá da planilha.`)) {
+      return;
+    }
+
+    try {
+      // 1. Remove do localStorage
+      window.State.osHistory = window.State.osHistory.filter(o => o.numeroOS !== numero);
+      window.Storage.saveOSHistory();
+
+      // 2. Remove da planilha via Google Sheets
+      if (window.GoogleSheets && window.Auth.can('sincronizar')) {
+        const result = await window.GoogleSheets.postData('deleteOS', { numeroOS: numero });
+        if (result) {
+          showToast(`OS ${numero} excluída da planilha!`);
+        } else {
+          showToast(`OS ${numero} excluída localmente, mas falhou ao sincronizar`, true);
+        }
+      } else {
+        showToast(`OS ${numero} excluída localmente`);
+      }
+
+      // 3. Atualiza a interface
+      this.render();
+      this.updateStats();
+      if (window.ClientesModule) window.ClientesModule.updateStats();
+
+    } catch (error) {
+      console.error('Erro ao excluir:', error);
+      showToast('Erro ao excluir OS', true);
+    }
+  },
+
+  exportCSV() {
+    if (!window.Auth.can('historico_exportar_csv')) {
+      showToast('Apenas administrador pode exportar', true);
+      return;
+    }
+    let csv = "OS,Data,Cliente,Status,Tipo,Horas,Total\n";
+    window.State.osHistory.forEach(os => {
+      csv += `${os.numeroOS || ''},${os.dataOS || ''},"${os.cliente || ''}",${window.Utils.formatStatus(os.status)},${os.tipoChamado || ''},${os.horasTotais || ''},${os.totalGeral || ''}\n`;
+    });
+    const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `historico_${window.Utils.dataHojeISO()}.csv`;
+    link.click();
+    showToast('Histórico exportado');
+  },
+
+  importCSV() {
+    if (!window.Auth.can('historico_importar_csv')) {
+      showToast('Apenas administrador pode importar', true);
+      return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const lines = ev.target.result.split('\n');
+        let importados = 0;
+        for (let i = 1; i < lines.length; i++) {
+          if (!lines[i].trim()) continue;
+          const cols = window.Utils.parseCSVLine(lines[i]);
+          if (cols[0]) {
+            window.State.osHistory.push({
+              numeroOS: cols[0],
+              dataOS: cols[1] || '',
+              cliente: (cols[2] || '').replace(/"/g, ''),
+              status: (cols[3] || '').toLowerCase() || 'abertura',
+              tipoChamado: (cols[4] || '').toLowerCase() || 'normal',
+              horasTotais: cols[5] || '0h',
+              totalGeral: cols[6] || '00:00',
+              descricaoServico: '',
+              pecasAplicadas: '',
+              pendencias: '',
+              relatoCliente: '',
+              marca: '',
+              modelo: '',
+              numSerie: '',
+              horimetro: '',
+              combustivel: '',
+              whatsappCliente: '',
+              cnpj: '',
+              cidadeCliente: '',
+              endereco: '',
+              tecnico: 'LiftOS',
+              recebedor: '',
+              orcamentoVinculado: '',
+              fotosBase64: [],
+              fotoHorimetro: null,
+              fotosPendencias: [],
+              assinaturaTecnico: '',
+              assinaturaCliente: '',
+              checklistData: {}
+            });
+            importados++;
+          }
+        }
+        window.Storage.saveOSHistory();
+        this.render();
+        this.updateStats();
+        if (window.ClientesModule) window.ClientesModule.updateStats();
+        showToast(`${importados} OS importadas`);
+      };
+      reader.readAsText(file, 'UTF-8');
+    };
+    input.click();
+  },
+
+  async clear() {
+    if (!window.Auth.can('historico_limpar')) {
+      showToast('Apenas administrador pode limpar', true);
+      return;
+    }
+    if (!confirm('⚠️ ATENÇÃO: Isso irá apagar TODO o histórico de OS.\n\nEsta ação não pode ser desfeita. Confirmar?')) return;
+
+    try {
+      // Limpa local
+      const total = window.State.osHistory.length;
+      window.State.osHistory = [];
+      window.Storage.saveOSHistory();
+
+      // Sincroniza exclusão com planilha (opcional: enviar todos os IDs para deletar)
+      if (window.GoogleSheets && window.Auth.can('sincronizar')) {
+        // Você pode implementar uma ação 'clearAllOS' no backend se necessário
+        showToast(`${total} OS removidas localmente. Sincronização manual necessária.`);
+      }
+
+      this.render();
+      this.updateStats();
+      if (window.ClientesModule) window.ClientesModule.updateStats();
+      showToast(`${total} OS removidas`);
+    } catch (error) {
+      showToast('Erro ao limpar', true);
+    }
+  }
+};
