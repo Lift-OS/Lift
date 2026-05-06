@@ -1,4 +1,4 @@
-// modules/os.js - Módulo de Ordem de Serviço (CORRIGIDO)
+// modules/os.js - Módulo de Ordem de Serviço (CORRIGIDO - sem geração automática)
 window.OSModule = {
   state: {
     currentStatus: 'abertura',
@@ -115,13 +115,11 @@ window.OSModule = {
       if (!inicio || !termino) return;
       
       let totalMinutos = this.calcularDiferencaMinutos(inicio, termino);
-      
       const almocoSaida = document.getElementById('horaAlmocoSaida')?.value;
       const almocoRetorno = document.getElementById('horaAlmocoRetorno')?.value;
       if (almocoSaida && almocoRetorno) {
         totalMinutos -= this.calcularDiferencaMinutos(almocoSaida, almocoRetorno);
       }
-      
       let horas = Math.max(1, Math.ceil(totalMinutos / 60));
       document.getElementById('horasTotais').value = `${horas}h`;
       this.atualizarTotalGeral();
@@ -139,17 +137,14 @@ window.OSModule = {
       const horasText = document.getElementById('horasTotais')?.value;
       const horasExtras = document.getElementById('horasExtras')?.value || '00:00';
       const adicionalNoturno = document.getElementById('adicionalNoturno')?.value || '00:00';
-      
       let totalMinutos = 0;
       if (horasText) {
         const match = horasText.match(/(\d+)h/);
         if (match) totalMinutos += parseInt(match[1]) * 60;
       }
-      
       const extrasMin = this.converterHoraParaMinutos(horasExtras);
       const noturnoMin = this.converterHoraParaMinutos(adicionalNoturno);
       totalMinutos += extrasMin + noturnoMin;
-      
       const horas = Math.floor(totalMinutos / 60);
       const minutos = totalMinutos % 60;
       document.getElementById('totalGeral').value = `${String(horas).padStart(2,'0')}:${String(minutos).padStart(2,'0')}`;
@@ -233,11 +228,7 @@ window.OSModule = {
     this.timer.init();
     if (window.Signature) window.Signature.init();
     if (window.ChecklistModule) window.ChecklistModule.init();
-    
-    const numeroOS = document.getElementById('numeroOS');
-    if (numeroOS && !numeroOS.value) {
-      numeroOS.value = this.gerarNumeroOS();
-    }
+    // NÃO gera número automaticamente - só quando clicar em Nova OS
   },
 
   loadEventListeners() {
@@ -499,7 +490,7 @@ window.OSModule = {
     this.mudarStatus('fechada');
   },
 
-  // ========== NOVA OS (CORRIGIDO) ==========
+  // ========== NOVA OS ==========
   novaOS() {
     if (!window.Auth.can('criar_os')) {
       showToast('Sem permissão', true);
@@ -510,7 +501,6 @@ window.OSModule = {
       return;
     }
 
-    // Reset completo
     this.state.currentStatus = 'abertura';
     this.state.fotosServico = [];
     this.state.fotoHorimetro = null;
@@ -518,7 +508,6 @@ window.OSModule = {
     this.state.hasUnsavedChanges = false;
     this.resetNumeroOS();
 
-    // Limpar campos
     const inputs = document.querySelectorAll('#tab-os input, #tab-os select, #tab-os textarea');
     inputs.forEach(el => {
       if (el.id && el.type !== 'file') {
@@ -530,7 +519,6 @@ window.OSModule = {
       }
     });
 
-    // Limpar previews
     const fps = document.getElementById('fotosPreview');
     if (fps) fps.innerHTML = '';
     const fhp = document.getElementById('fotoHorimetroPreview');
@@ -538,23 +526,18 @@ window.OSModule = {
     const fpp = document.getElementById('fotosPendenciasPreview');
     if (fpp) fpp.innerHTML = '';
 
-    // Reset assinaturas
     if (window.Signature) {
       window.Signature.clear('tec');
       window.Signature.clear('cli');
     }
 
-    // Reset timer
     this.timer.reset();
 
-    // Gerar NOVO número da OS
     const osNum = this.gerarNumeroOS();
     document.getElementById('numeroOS').value = osNum;
 
-    // Reset checklist
     if (window.ChecklistModule) window.ChecklistModule.reset();
 
-    // Esconder badge de orçamento
     const orcBadge = document.getElementById('orcVinculadoBadge');
     if (orcBadge) orcBadge.style.display = 'none';
 
