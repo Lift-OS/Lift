@@ -1,4 +1,4 @@
-// modules/clientes.js - Módulo de Clientes (com sincronização)
+// modules/clientes.js - Cadastro de Clientes com Equipamentos
 window.ClientesModule = {
   editingId: null,
 
@@ -13,12 +13,19 @@ window.ClientesModule = {
   loadEventListeners: function() {
     var searchInput = document.getElementById('cad_searchInput');
     if (searchInput) searchInput.oninput = function(e) { ClientesModule.filtrarClientes(e.target.value); };
+    
     var btnSalvar = document.getElementById('btnSalvarCliente');
-    if (btnSalvar) btnSalvar.onclick = function() { ClientesModule.save(); };
+    if (btnSalvar) btnSalvar.onclick = function() { ClientesModule.salvar(); };
+    
     var btnCancelar = document.getElementById('cad_btnCancelar');
-    if (btnCancelar) btnCancelar.onclick = function() { ClientesModule.cancelEdit(); };
+    if (btnCancelar) btnCancelar.onclick = function() { ClientesModule.cancelarEdicao(); };
+    
+    var btnAddEquip = document.getElementById('btnAddEquip');
+    if (btnAddEquip) btnAddEquip.onclick = function() { ClientesModule.adicionarCampoEquipamento(); };
+    
     var btnExportar = document.getElementById('btnExportarCSVClientes');
     if (btnExportar) btnExportar.onclick = function() { ClientesModule.exportCSV(); };
+    
     var btnImportar = document.getElementById('btnImportarCSVClientes');
     if (btnImportar) btnImportar.onclick = function() { ClientesModule.importCSV(); };
   },
@@ -38,67 +45,91 @@ window.ClientesModule = {
       tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-[var(--muted)]">Nenhum cliente cadastrado</td></tr>';
       return;
     }
-
-    window.State.clients.forEach(function(cliente) {
+    
+    var podeEditar = window.Auth.can('clientes_editar');
+    var podeExcluir = window.Auth.can('clientes_excluir');
+    
+    for (var i = 0; i < window.State.clients.length; i++) {
+      var c = window.State.clients[i];
+      var equipArray = Array.isArray(c.equipamentos) ? c.equipamentos : [];
+      var marcas = '';
+      for (var j = 0; j < equipArray.length; j++) {
+        if (j > 0) marcas += ', ';
+        marcas += equipArray[j].marca || '';
+      }
+      
+      var acoes = '<button onclick="ClientesModule.selecionarCliente(' + c.id + ')" class="btn btn-primary text-xs py-1 px-2"><i class="fas fa-arrow-right"></i> Selecionar</button>';
+      if (podeEditar) acoes += ' <i class="fas fa-edit text-blue-400 cursor-pointer ml-2" onclick="ClientesModule.editarCliente(' + c.id + ')"></i>';
+      if (podeExcluir) acoes += ' <i class="fas fa-trash text-red-400 cursor-pointer ml-2" onclick="ClientesModule.excluirCliente(' + c.id + ')"></i>';
+      
       var row = tbody.insertRow();
       row.innerHTML = `
-        <td class="p-2">${window.esc(cliente.nome || '')}</td>
-        <td class="p-2">${window.esc(cliente.cidade || '-')}</td>
-        <td class="p-2">-</td>
-        <td class="p-2">
-          <button onclick="ClientesModule.edit(${cliente.id})" class="btn btn-primary text-xs py-1 px-2">
-            <i class="fas fa-edit"></i> Editar
-          </button>
-          <button onclick="ClientesModule.delete(${cliente.id})" class="btn btn-danger text-xs py-1 px-2">
-            <i class="fas fa-trash"></i> Excluir
-          </button>
-        </td>
+        <td class="p-2">${window.esc(c.nome || '')}</td>
+        <td class="p-2">${window.esc(c.cidade || '-')}</td>
+        <td class="p-2">${window.esc(marcas || '-')}</td>
+        <td class="p-2">${acoes}</td>
       `;
-    });
+    }
   },
 
-  // Adicione este método no clientes.js
-selecionarCliente(id) {
-  var cliente = window.State.clients.find(c => c.id === id);
-  if (!cliente) return;
-  
-  // Mostrar modal de escolha entre OS e Orçamento
-  var escolha = confirm('Cliente: ' + cliente.nome + '\n\nO que deseja fazer?\n\nOK = Abrir OS\nCancelar = Abrir Orçamento');
-  
-  if (escolha) {
-    // Carregar OS
-    window.Utils.setVal('cliente', cliente.nome);
-    window.Utils.setVal('cnpj', cliente.cnpj || '');
-    window.Utils.setVal('cidadeCliente', cliente.cidade || '');
-    window.Utils.setVal('endereco', cliente.endereco || '');
-    window.Utils.setVal('whatsappCliente', cliente.whatsapp || '');
-    window.PageLoader.load('os');
-    showToast('Cliente carregado na OS');
-  } else {
-    // Carregar Orçamento
-    window.Utils.setVal('orc_cliente', cliente.nome);
-    window.Utils.setVal('orc_equipamento', '');
-    window.PageLoader.load('orcamento');
-    showToast('Cliente carregado no orçamento');
-  }
-}
-
-  filtrarClientes: function(busca) {
-    if (!busca) { this.renderTable(); return; }
-    var filtered = window.State.clients.filter(function(c) {
-      return (c.nome && c.nome.toLowerCase().includes(busca.toLowerCase())) ||
-             (c.cidade && c.cidade.toLowerCase().includes(busca.toLowerCase()));
-    });
-    this.renderTable(filtered);
+  selecionarCliente: function(id) {
+    var cliente = null;
+    for (var i = 0; i < window.State.clients.length; i++) {
+      if (window.State.clients[i].id === id) {
+        cliente = window.State.clients[i];
+        break;
+      }
+    }
+    if (!cliente) return;
+    
+    var escolha = confirm('Cliente: ' + cliente.nome + '\n\nOK = Abrir OS\nCancelar = Criar Orçamento');
+    
+    if (escolha) {
+      window.Utils.setVal('cliente', cliente.nome);
+      window.Utils.setVal('cnpj', cliente.cnpj || '');
+      window.Utils.setVal('cidadeCliente', cliente.cidade || '');
+      window.Utils.setVal('endereco', cliente.endereco || '');
+      window.Utils.setVal('whatsappCliente', cliente.whatsapp || '');
+      window.PageLoader.load('os');
+      showToast('Cliente carregado na OS');
+    } else {
+      window.Utils.setVal('orc_cliente', cliente.nome);
+      window.Utils.setVal('orc_equipamento', '');
+      window.PageLoader.load('orcamento');
+      showToast('Cliente carregado no orçamento');
+    }
   },
 
-  save: async function() {
+  salvar: async function() {
     if (!window.Auth.can('clientes_cadastrar')) {
       showToast('Sem permissão', true);
       return;
     }
+    
     var nome = document.getElementById('cad_nome')?.value.trim();
-    if (!nome) { showToast('Nome obrigatório', true); return; }
+    if (!nome) {
+      showToast('Nome é obrigatório', true);
+      return;
+    }
+    
+    // Coletar equipamentos
+    var equipamentos = [];
+    var equipItems = document.querySelectorAll('#equipamentosList .equip-item');
+    for (var i = 0; i < equipItems.length; i++) {
+      var item = equipItems[i];
+      var marcaSelect = item.querySelector('.equip-marca');
+      var outraMarca = item.querySelector('.outra-marca');
+      var marca = marcaSelect ? marcaSelect.value : '';
+      if (marca === 'OUTRA' && outraMarca) marca = outraMarca.value.toUpperCase();
+      
+      if (marca) {
+        var modelo = item.querySelector('.equip-modelo')?.value || '';
+        var serie = item.querySelector('.equip-serie')?.value || '';
+        var qtd = parseInt(item.querySelector('.equip-qtd')?.value) || 1;
+        var combustivel = item.querySelector('.equip-combustivel')?.value || '';
+        equipamentos.push({ marca: marca, modelo: modelo, serie: serie, qtd: qtd, combustivel: combustivel });
+      }
+    }
     
     var cliente = {
       id: this.editingId || Date.now(),
@@ -109,11 +140,19 @@ selecionarCliente(id) {
       telefone: document.getElementById('cad_telefone')?.value || '',
       whatsapp: document.getElementById('cad_whatsapp')?.value || '',
       email: document.getElementById('cad_email')?.value || '',
-      equipamentos: []
+      responsavel_nome: document.getElementById('cad_responsavel_nome')?.value || '',
+      responsavel_telefone: document.getElementById('cad_responsavel_telefone')?.value || '',
+      equipamentos: equipamentos
     };
     
     if (this.editingId) {
-      var index = window.State.clients.findIndex(function(c) { return c.id === this.editingId; }.bind(this));
+      var index = -1;
+      for (var i = 0; i < window.State.clients.length; i++) {
+        if (window.State.clients[i].id === this.editingId) {
+          index = i;
+          break;
+        }
+      }
       if (index >= 0) window.State.clients[index] = cliente;
       showToast('Cliente atualizado');
       this.editingId = null;
@@ -124,20 +163,29 @@ selecionarCliente(id) {
     }
     
     window.Storage.saveClients();
-    this.clearForm();
+    this.limparFormulario();
     this.renderTable();
     this.updateStats();
     
-    // Sincronizar com Google Sheets
     if (window.GoogleSheets && window.Auth.can('sincronizar')) {
       await window.GoogleSheets.syncSingleCliente(cliente);
       showToast('Cliente sincronizado com a planilha!');
     }
   },
 
-  edit: function(id) {
-    if (!window.Auth.can('clientes_editar')) { showToast('Sem permissão', true); return; }
-    var cliente = window.State.clients.find(function(c) { return c.id === id; });
+  editarCliente: function(id) {
+    if (!window.Auth.can('clientes_editar')) {
+      showToast('Sem permissão', true);
+      return;
+    }
+    
+    var cliente = null;
+    for (var i = 0; i < window.State.clients.length; i++) {
+      if (window.State.clients[i].id === id) {
+        cliente = window.State.clients[i];
+        break;
+      }
+    }
     if (!cliente) return;
     
     this.editingId = id;
@@ -148,36 +196,103 @@ selecionarCliente(id) {
     document.getElementById('cad_telefone').value = cliente.telefone || '';
     document.getElementById('cad_whatsapp').value = cliente.whatsapp || '';
     document.getElementById('cad_email').value = cliente.email || '';
+    document.getElementById('cad_responsavel_nome').value = cliente.responsavel_nome || '';
+    document.getElementById('cad_responsavel_telefone').value = cliente.responsavel_telefone || '';
+    
+    var container = document.getElementById('equipamentosList');
+    if (container) container.innerHTML = '';
+    
+    var equipamentos = Array.isArray(cliente.equipamentos) ? cliente.equipamentos : [];
+    for (var i = 0; i < equipamentos.length; i++) {
+      this.adicionarCampoEquipamento(equipamentos[i].marca, equipamentos[i].modelo, equipamentos[i].serie, equipamentos[i].qtd, equipamentos[i].combustivel);
+    }
+    
     document.getElementById('cad_btnCancelar').style.display = 'inline-flex';
+    document.getElementById('clienteFormCard')?.scrollIntoView({ behavior: 'smooth' });
   },
 
-  delete: function(id) {
-    if (!window.Auth.can('clientes_excluir')) { showToast('Sem permissão', true); return; }
-    if (!confirm('Excluir cliente?')) return;
-    window.State.clients = window.State.clients.filter(function(c) { return c.id !== id; });
+  excluirCliente: function(id) {
+    if (!window.Auth.can('clientes_excluir')) {
+      showToast('Sem permissão', true);
+      return;
+    }
+    if (!confirm('Excluir este cliente permanentemente?')) return;
+    
+    var newClients = [];
+    for (var i = 0; i < window.State.clients.length; i++) {
+      if (window.State.clients[i].id !== id) newClients.push(window.State.clients[i]);
+    }
+    window.State.clients = newClients;
     window.Storage.saveClients();
     this.renderTable();
     this.updateStats();
     showToast('Cliente excluído');
   },
 
-  cancelEdit: function() {
+  cancelarEdicao: function() {
     this.editingId = null;
-    this.clearForm();
+    this.limparFormulario();
     document.getElementById('cad_btnCancelar').style.display = 'none';
   },
 
-  clearForm: function() {
-    var fields = ['cad_nome', 'cad_cnpj', 'cad_endereco', 'cad_cidade', 'cad_telefone', 'cad_whatsapp', 'cad_email'];
-    fields.forEach(function(id) { var el = document.getElementById(id); if (el) el.value = ''; });
+  limparFormulario: function() {
+    var fields = ['cad_nome', 'cad_cnpj', 'cad_endereco', 'cad_cidade', 'cad_telefone', 'cad_whatsapp', 'cad_email', 'cad_responsavel_nome', 'cad_responsavel_telefone'];
+    for (var i = 0; i < fields.length; i++) {
+      var el = document.getElementById(fields[i]);
+      if (el) el.value = '';
+    }
+    var container = document.getElementById('equipamentosList');
+    if (container) container.innerHTML = '';
+  },
+
+  adicionarCampoEquipamento: function(marca, modelo, serie, qtd, combustivel) {
+    var container = document.getElementById('equipamentosList');
+    if (!container) return;
+    
+    var div = document.createElement('div');
+    div.className = 'equip-item grid grid-cols-1 md:grid-cols-6 gap-2 p-2 bg-[var(--bg-secondary)] rounded-lg mb-2';
+    
+    var marcasList = ["TOYOTA","CLARK","BYD","PALETRANS","LINDE","HYSTER","YALE","CATERPILLAR","KOMATSU","MITSUBISHI","NISSAN","STILL","CROWN","JUNGHEINRICH","TCM","HYUNDAI","DOOSAN","HELI","HANGCHA","LONKING","OUTRA"];
+    var marcasOptions = '<option value="">Selecione</option>';
+    for (var i = 0; i < marcasList.length; i++) {
+      var selected = (marca === marcasList[i]) ? 'selected' : '';
+      marcasOptions += '<option value="' + marcasList[i] + '" ' + selected + '>' + marcasList[i] + '</option>';
+    }
+    
+    div.innerHTML = `
+      <select class="form-input equip-marca">${marcasOptions}</select>
+      <div class="outra-marca-container" style="display:${marca && !marcasList.includes(marca) ? 'block' : 'none'}">
+        <input type="text" placeholder="Digite a marca" class="form-input outra-marca" value="${marca && !marcasList.includes(marca) ? window.esc(marca) : ''}">
+      </div>
+      <input type="text" placeholder="Modelo" class="form-input equip-modelo" value="${window.esc(modelo || '')}">
+      <input type="text" placeholder="Série" class="form-input equip-serie" value="${window.esc(serie || '')}">
+      <input type="number" placeholder="Qtd" class="form-input equip-qtd" value="${qtd || 1}">
+      <select class="form-input equip-combustivel">
+        <option value="">Combustível</option>
+        <option value="eletrico" ${combustivel === 'eletrico' ? 'selected' : ''}>Elétrico</option>
+        <option value="diesel" ${combustivel === 'diesel' ? 'selected' : ''}>Diesel</option>
+        <option value="gasolina" ${combustivel === 'gasolina' ? 'selected' : ''}>Gasolina</option>
+        <option value="glp" ${combustivel === 'glp' ? 'selected' : ''}>GLP</option>
+      </select>
+      <button type="button" class="text-red-500" onclick="this.closest('.equip-item').remove()"><i class="fas fa-trash"></i></button>
+    `;
+    
+    var marcaSelect = div.querySelector('.equip-marca');
+    var outraDiv = div.querySelector('.outra-marca-container');
+    marcaSelect.onchange = function() {
+      outraDiv.style.display = marcaSelect.value === 'OUTRA' ? 'block' : 'none';
+    };
+    
+    container.appendChild(div);
   },
 
   exportCSV: function() {
     if (!window.Auth.can('clientes_exportar_csv')) return;
     var csv = "Nome,CNPJ,Endereco,Cidade,Telefone,WhatsApp,E-mail\n";
-    window.State.clients.forEach(function(c) {
+    for (var i = 0; i < window.State.clients.length; i++) {
+      var c = window.State.clients[i];
       csv += '"' + (c.nome || '') + '",' + (c.cnpj || '') + ',"' + (c.endereco || '') + '","' + (c.cidade || '') + '",' + (c.telefone || '') + ',' + (c.whatsapp || '') + ',' + (c.email || '') + '\n';
-    });
+    }
     var blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
     var link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
