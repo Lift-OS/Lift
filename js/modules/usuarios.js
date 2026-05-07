@@ -12,6 +12,9 @@ window.UserManager = {
     const btnAdicionar = document.getElementById('btnAdicionarUsuario');
     if (btnAdicionar) btnAdicionar.onclick = () => this.addUser();
 
+    const btnSalvar = document.getElementById('btnSalvarUsuario');
+    if (btnSalvar) btnSalvar.onclick = () => this.saveEdit();
+
     const btnCancelar = document.getElementById('userCancelBtn');
     if (btnCancelar) btnCancelar.onclick = () => this.cancelEdit();
   },
@@ -47,9 +50,9 @@ window.UserManager = {
 
       const row = tbody.insertRow();
       row.innerHTML = `
-        <td class="p-2">${window.esc(user.nome)}</td>
-        <td class="p-2">${window.esc(user.login)}</td>
-        <td class="p-2">${window.esc(nivelLabel)}</td>
+        <td class="p-2">${window.esc ? window.esc(user.nome) : user.nome}</td>
+        <td class="p-2">${window.esc ? window.esc(user.login) : user.login}</td>
+        <td class="p-2">${window.esc ? window.esc(nivelLabel) : nivelLabel}</td>
         <td class="p-2">${acoes}</td>
       `;
     });
@@ -57,7 +60,7 @@ window.UserManager = {
 
   addUser() {
     if (!window.Auth.can('usuarios_criar')) {
-      showToast('Apenas administrador pode criar usuários', true);
+      this.showToast('Apenas administrador pode criar usuários', true);
       return;
     }
 
@@ -67,13 +70,18 @@ window.UserManager = {
     const nivel = document.getElementById('userNivel')?.value;
 
     if (!nome || !login || !senha) {
-      showToast('Preencha todos os campos', true);
+      this.showToast('Preencha todos os campos', true);
+      return;
+    }
+
+    if (senha.length < 4) {
+      this.showToast('Senha deve ter no mínimo 4 caracteres', true);
       return;
     }
 
     const users = window.Auth.getUsers();
-    if (users.find(u => u.login === login)) {
-      showToast('Login já existe', true);
+    if (users.find(u => u.login.toLowerCase() === login.toLowerCase())) {
+      this.showToast('Login já existe', true);
       return;
     }
 
@@ -82,46 +90,121 @@ window.UserManager = {
       nome: nome,
       login: login,
       senha: senha,
-      nivel: nivel
+      nivel: nivel || 'tecnico'
     };
 
     users.push(newUser);
     window.Auth.saveUsers(users);
     this.clearForm();
     this.render();
-    showToast('Usuário adicionado!');
+    this.showToast('Usuário adicionado!');
 
-    if (window.GoogleSheets && window.Auth.can('sincronizar')) {
-      window.GoogleSheets.syncUsuarios(users);
+    this.syncIfAllowed(users);
+  },
+
+  // ✅ NOVO MÉTODO - Salvar edição
+  saveEdit() {
+    if (!this.editingId) {
+      this.showToast('Nenhuma edição em andamento', true);
+      return;
     }
+
+    if (!window.Auth.can('usuarios_editar')) {
+      this.showToast('Apenas administrador pode editar usuários', true);
+      return;
+    }
+
+    const nome = document.getElementById('userNome')?.value.trim();
+    const login = document.getElementById('userLogin')?.value.trim();
+    const senha = document.getElementById('userSenha')?.value;
+    const nivel = document.getElementById('userNivel')?.value;
+
+    if (!nome || !login) {
+      this.showToast('Nome e login são obrigatórios', true);
+      return;
+    }
+
+    const users = window.Auth.getUsers();
+    
+    // Verificar se login já existe (para outro usuário)
+    const loginExistente = users.find(u => u.login.toLowerCase() === login.toLowerCase() && u.id !== this.editingId);
+    if (loginExistente) {
+      this.showToast('Login já existe para outro usuário', true);
+      return;
+    }
+
+    // Encontrar e atualizar o usuário
+    const userIndex = users.findIndex(u => u.id === this.editingId);
+    if (userIndex === -1) {
+      this.showToast('Usuário não encontrado', true);
+      this.cancelEdit();
+      return;
+    }
+
+    users[userIndex].nome = nome;
+    users[userIndex].login = login;
+    users[userIndex].nivel = nivel || 'tecnico';
+    
+    // Só atualiza a senha se foi preenchida
+    if (senha && senha.length >= 4) {
+      users[userIndex].senha = senha;
+    } else if (senha && senha.length > 0 && senha.length < 4) {
+      this.showToast('Senha deve ter no mínimo 4 caracteres', true);
+      return;
+    }
+
+    window.Auth.saveUsers(users);
+    this.cancelEdit();
+    this.render();
+    this.showToast('Usuário atualizado!');
+
+    this.syncIfAllowed(users);
   },
 
   edit(id) {
     if (!window.Auth.can('usuarios_editar')) {
-      showToast('Apenas administrador pode editar usuários', true);
+      this.showToast('Apenas administrador pode editar usuários', true);
       return;
     }
 
     const user = window.Auth.getUsers().find(u => u.id === id);
-    if (!user) return;
+    if (!user) {
+      this.showToast('Usuário não encontrado', true);
+      return;
+    }
 
     this.editingId = id;
-    document.getElementById('userNome').value = user.nome;
-    document.getElementById('userLogin').value = user.login;
-    document.getElementById('userSenha').value = '';
-    document.getElementById('userNivel').value = user.nivel;
-    document.getElementById('userCancelBtn').style.display = 'inline-flex';
-    document.getElementById('btnAdicionarUsuario').style.display = 'none';
+    
+    const elNome = document.getElementById('userNome');
+    const elLogin = document.getElementById('userLogin');
+    const elSenha = document.getElementById('userSenha');
+    const elNivel = document.getElementById('userNivel');
+    const btnCancelar = document.getElementById('userCancelBtn');
+    const btnAdicionar = document.getElementById('btnAdicionarUsuario');
+    const btnSalvar = document.getElementById('btnSalvarUsuario');
+
+    if (elNome) elNome.value = user.nome;
+    if (elLogin) elLogin.value = user.login;
+    if (elSenha) elSenha.value = '';
+    if (elNivel) elNivel.value = user.nivel;
+    
+    // ✅ CORRIGIDO - Mostrar botão salvar e esconder adicionar
+    if (btnCancelar) btnCancelar.style.display = 'inline-flex';
+    if (btnAdicionar) btnAdicionar.style.display = 'none';
+    if (btnSalvar) btnSalvar.style.display = 'inline-flex';
+
+    // Scroll para o formulário
+    elNome?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   },
 
   delete(id) {
     if (!window.Auth.can('usuarios_excluir')) {
-      showToast('Apenas administrador pode excluir usuários', true);
+      this.showToast('Apenas administrador pode excluir usuários', true);
       return;
     }
 
     if (window.Auth.currentUser?.id === id) {
-      showToast('Você não pode excluir seu próprio usuário', true);
+      this.showToast('Você não pode excluir seu próprio usuário', true);
       return;
     }
 
@@ -130,25 +213,50 @@ window.UserManager = {
     const users = window.Auth.getUsers().filter(u => u.id !== id);
     window.Auth.saveUsers(users);
     this.render();
-    showToast('Usuário excluído');
+    this.showToast('Usuário excluído');
 
-    if (window.GoogleSheets && window.Auth.can('sincronizar')) {
-      window.GoogleSheets.syncUsuarios(users);
-    }
+    this.syncIfAllowed(users);
   },
 
   cancelEdit() {
     this.editingId = null;
     this.clearForm();
-    document.getElementById('userCancelBtn').style.display = 'none';
-    document.getElementById('btnAdicionarUsuario').style.display = 'inline-flex';
+    
+    const btnCancelar = document.getElementById('userCancelBtn');
+    const btnAdicionar = document.getElementById('btnAdicionarUsuario');
+    const btnSalvar = document.getElementById('btnSalvarUsuario');
+
+    if (btnCancelar) btnCancelar.style.display = 'none';
+    if (btnAdicionar) btnAdicionar.style.display = 'inline-flex';
+    if (btnSalvar) btnSalvar.style.display = 'none';
   },
 
   clearForm() {
-    document.getElementById('userNome').value = '';
-    document.getElementById('userLogin').value = '';
-    document.getElementById('userSenha').value = '';
-    document.getElementById('userNivel').value = 'tecnico';
+    const elNome = document.getElementById('userNome');
+    const elLogin = document.getElementById('userLogin');
+    const elSenha = document.getElementById('userSenha');
+    const elNivel = document.getElementById('userNivel');
+
+    if (elNome) elNome.value = '';
+    if (elLogin) elLogin.value = '';
+    if (elSenha) elSenha.value = '';
+    if (elNivel) elNivel.value = 'tecnico';
+  },
+
+  // ✅ NOVO - Helper para toast
+  showToast(message, isError = false) {
+    if (typeof showToast === 'function') {
+      showToast(message, isError);
+    } else {
+      console.log(isError ? '❌' : '✅', message);
+    }
+  },
+
+  // ✅ NOVO - Helper para sincronização
+  syncIfAllowed(users) {
+    if (window.GoogleSheets && window.Auth.can('sincronizar')) {
+      window.GoogleSheets.syncUsuarios(users);
+    }
   },
 
   loadFromSync(users) {
